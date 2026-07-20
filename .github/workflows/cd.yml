@@ -1,0 +1,19 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  docker-deploy-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start containers with Docker Compose
+        run: docker compose up -d --build
+
+      - name: Show running containers
+        run: docker compose ps

@@ -1,0 +1,316 @@
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\app.ts -----
+import express, { Express, Request, Response } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import routes from './routes';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+
+export function createApp(): Express {
+  const app: Express = express();
+
+  app.use(helmet());
+  app.use(
+    cors({
+      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      credentials: true,
+    })
+  );
+  app.use(express.json());
+  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api', apiLimiter);
+
+  app.get('/healthz', (_req: Request, res: Response) => {
+    res.status(200).json({ status: 'ok' });
+  });
+  app.get('/readyz', (_req: Request, res: Response) => {
+    res.status(200).json({ status: 'ready' });
+  });
+
+  app.use('/api', routes);
+
+  app.use(notFoundHandler);
+  app.use(errorHandler);
+
+  return app;
+}
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\server.ts -----
+import 'dotenv/config';
+import { createApp } from './app';
+import { logger } from './utils/logger';
+import { prisma } from './config/db';
+import { redis } from './config/redis';
+
+const PORT = Number(process.env.PORT || 5000);
+
+async function main(): Promise<void> {
+  const app = createApp();
+
+  const server = app.listen(PORT, () => {
+    logger.info(`Server listening on port ${PORT}`);
+  });
+
+  const shutdown = async (signal: string): Promise<void> => {
+    logger.info(`Received ${signal}, shutting down gracefully...`);
+    server.close(async () => {
+      await prisma.$disconnect();
+      redis.disconnect();
+      logger.info('Shutdown complete');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+}
+
+main().catch((err) => {
+  logger.error('Fatal error during startup', err);
+  process.exit(1);
+});
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\config\db.ts -----
+import 'dotenv/config';
+
+export const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/movie_booking';
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\config\redis.ts -----
+import 'dotenv/config';
+
+export const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\controllers\authController.ts -----
+import type { Request, Response } from 'express';
+
+export const login = (_req: Request, res: Response) => {
+  res.json({ message: 'Login endpoint placeholder' });
+};
+
+export const signup = (_req: Request, res: Response) => {
+  res.json({ message: 'Signup endpoint placeholder' });
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\controllers\bookingController.ts -----
+import type { Request, Response } from 'express';
+
+export const createBooking = (_req: Request, res: Response) => {
+  res.json({ message: 'Booking creation placeholder' });
+};
+
+export const getBookingHistory = (_req: Request, res: Response) => {
+  res.json({ bookings: [] });
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\controllers\movieController.ts -----
+import type { Request, Response } from 'express';
+
+export const getMovies = (_req: Request, res: Response) => {
+  res.json({ movies: [] });
+};
+
+export const getMovieById = (_req: Request, res: Response) => {
+  res.json({ movie: null });
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\controllers\paymentController.ts -----
+import type { Request, Response } from 'express';
+
+export const processPayment = (_req: Request, res: Response) => {
+  res.json({ message: 'Mock payment completed', status: 'success' });
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\controllers\seatController.ts -----
+import type { Request, Response } from 'express';
+
+export const getSeats = (_req: Request, res: Response) => {
+  res.json({ seats: [] });
+};
+
+export const lockSeats = (_req: Request, res: Response) => {
+  res.json({ message: 'Seat locking placeholder' });
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\controllers\showtimeController.ts -----
+import type { Request, Response } from 'express';
+
+export const getShowtimes = (_req: Request, res: Response) => {
+  res.json({ showtimes: [] });
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\middleware\authMiddleware.ts -----
+import type { NextFunction, Request, Response } from 'express';
+
+export const authMiddleware = (_req: Request, _res: Response, next: NextFunction) => {
+  next();
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\middleware\errorHandler.ts -----
+import type { ErrorRequestHandler } from 'express';
+
+export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+  console.error(error);
+  res.status(500).json({ message: 'Internal Server Error' });
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\middleware\validateRequest.ts -----
+import type { NextFunction, Request, Response } from 'express';
+
+export const validateRequest = (_req: Request, _res: Response, next: NextFunction) => {
+  next();
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\routes\authRoutes.ts -----
+import { Router } from 'express';
+import { login, signup } from '../controllers/authController.js';
+
+const router = Router();
+
+router.post('/login', login);
+router.post('/signup', signup);
+
+export default router;
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\routes\bookingRoutes.ts -----
+import { Router } from 'express';
+import { createBooking, getBookingHistory } from '../controllers/bookingController.js';
+
+const router = Router();
+
+router.post('/', createBooking);
+router.get('/history', getBookingHistory);
+
+export default router;
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\routes\index.ts -----
+import { Router } from 'express';
+import authRoutes from './authRoutes.js';
+import bookingRoutes from './bookingRoutes.js';
+import movieRoutes from './movieRoutes.js';
+import seatRoutes from './seatRoutes.js';
+import showtimeRoutes from './showtimeRoutes.js';
+
+const router = Router();
+
+router.use('/auth', authRoutes);
+router.use('/movies', movieRoutes);
+router.use('/showtimes', showtimeRoutes);
+router.use('/seats', seatRoutes);
+router.use('/bookings', bookingRoutes);
+
+export default router;
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\routes\movieRoutes.ts -----
+import { Router } from 'express';
+import { getMovieById, getMovies } from '../controllers/movieController.js';
+
+const router = Router();
+
+router.get('/', getMovies);
+router.get('/:movieId', getMovieById);
+
+export default router;
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\routes\seatRoutes.ts -----
+import { Router } from 'express';
+import { getSeats, lockSeats } from '../controllers/seatController.js';
+
+const router = Router();
+
+router.get('/', getSeats);
+router.post('/lock', lockSeats);
+
+export default router;
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\routes\showtimeRoutes.ts -----
+import { Router } from 'express';
+import { getShowtimes } from '../controllers/showtimeController.js';
+
+const router = Router();
+
+router.get('/', getShowtimes);
+
+export default router;
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\schemas\index.ts -----
+import { z } from 'zod';
+
+export const signupSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  }),
+});
+
+export const loginSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(1, 'Password is required'),
+  }),
+});
+
+export const lockSeatsSchema = z.object({
+  body: z.object({
+    showtimeId: z.string().uuid('Invalid showtimeId'),
+    seatIds: z.array(z.string().uuid()).min(1, 'Select at least one seat'),
+  }),
+});
+
+export const createBookingSchema = z.object({
+  body: z.object({
+    showtimeId: z.string().uuid('Invalid showtimeId'),
+    seatIds: z.array(z.string().uuid()).min(1, 'Select at least one seat'),
+  }),
+});
+
+export const paymentSchema = z.object({
+  body: z.object({
+    bookingId: z.string().uuid('Invalid bookingId'),
+  }),
+});
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\services\authService.ts -----
+export const createToken = () => 'sample-token';
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\services\bookingService.ts -----
+export const calculateTotal = (seatCount: number) => seatCount * 12;
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\services\paymentService.ts -----
+export const processMockPayment = async () => ({
+  success: true,
+  message: 'Mock payment approved',
+});
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\types\auth.types.ts -----
+export type AuthPayload = {
+  email: string;
+  password: string;
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\types\booking.types.ts -----
+export type BookingRecord = {
+  id: string;
+  userId: string;
+  showtimeId: string;
+  seats: string[];
+  total: number;
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\types\express.d.ts -----
+import 'express';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+      };
+    }
+  }
+}
+
+export { };
+
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\utils\jwt.ts -----
+import jwt from 'jsonwebtoken';
+
+export const signToken = (payload: object) => jwt.sign(payload, process.env.JWT_SECRET || 'secret');
+export const verifyToken = (token: string) => jwt.verify(token, process.env.JWT_SECRET || 'secret');
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\utils\logger.ts -----
+export const logger = {
+  info: (message: string) => console.log(message),
+  error: (message: string) => console.error(message),
+};
+----- D:\AUB\Y4 S1\Project Management\Assignment\movie-ticket-booking\backend\src\utils\seatLock.ts -----
+export const acquireSeatLock = async (key: string, ttlSeconds = 30) => {
+  return {
+    key,
+    ttlSeconds,
+    locked: true,
+  };
+};
