@@ -53,14 +53,13 @@ jobs:
               echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
               sudo apt-get update
               sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-              sudo usermod -aG docker $USER
-              newgrp docker
+              sudo systemctl start docker
             fi
             cd ~/deploy-api
-            docker rm -f api-rest || true
-            docker compose down --remove-orphans || true
-            docker compose up -d --build
-            docker image prune -f
+            sudo docker rm -f api-rest || true
+            sudo docker build -t api-rest .
+            sudo docker run -d --name api-rest -p 3000:3000 api-rest
+            sudo docker image prune -f
 
       - name: Send Telegram Notification (Success)
         uses: appleboy/telegram-action@master
@@ -84,7 +83,7 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
             ❌ Backend Deployment FAILED!
-            Application: api-rest
+            Application: movie
             Repository: ${{ github.repository }}
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.event.head_commit.message }}

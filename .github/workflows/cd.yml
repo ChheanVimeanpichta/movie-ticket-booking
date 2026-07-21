@@ -53,14 +53,13 @@ jobs:
               echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
               sudo apt-get update
               sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-              sudo usermod -aG docker $USER
-              newgrp docker
+              sudo systemctl start docker
             fi
             cd ~/deploy-ui
-            docker rm -f ui-rest || true
-            docker compose down --remove-orphans || true
-            docker compose up -d --build
-            docker image prune -f
+            sudo docker rm -f ui-rest || true
+            sudo docker build -t ui-rest .
+            sudo docker run -d --name ui-rest -p 5173:5173 ui-rest
+            sudo docker image prune -f
 
       - name: Send Telegram Notification (Success)
         uses: appleboy/telegram-action@master
