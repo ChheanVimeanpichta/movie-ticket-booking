@@ -32,7 +32,7 @@ jobs:
         with:
           host: 13.222.139.218
           username: ubuntu
-          key: ${{ secrets.API_EC2_SSH_KEY }}
+          key: ${{ secrets.UI_EC2_SSH_KEY }}
           source: "backend/."
           target: "~/deploy-api"
 
@@ -41,7 +41,7 @@ jobs:
         with:
           host: 13.222.139.218
           username: ubuntu
-          key: ${{ secrets.API_EC2_SSH_KEY }}
+          key: ${{ secrets.UI_EC2_SSH_KEY }}
           script: |
             cd ~/deploy-api
             docker rm -f api-rest || true
