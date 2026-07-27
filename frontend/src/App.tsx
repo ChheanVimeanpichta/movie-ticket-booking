@@ -1,8 +1,13 @@
+import { Routes, Route } from "react-router-dom";
+import Home from "@/pages/Home";
+import ComingSoon from "@/pages/ComingSoon";
+
 export default function App() {
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>Movie Ticket Booking</h1>
-      <p>Frontend is now set up with Vite.</p>
-    </div>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/coming-soon" element={<ComingSoon />} />
+    </Routes>
   );
 }
+
