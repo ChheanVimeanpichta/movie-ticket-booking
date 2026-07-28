@@ -61,6 +61,13 @@ jobs:
             sudo docker run -d --name api-rest -p 3000:3000 api-rest
             sudo docker image prune -f
 
+      - name: Send Telegram Sticker
+        if: always()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
+            -d chat_id="${{ secrets.TELEGRAM_TO }}" \
+            -d sticker="CAACAgIAAxkBAAERUwxqIFkagZkp7hv44xv3pB-Fxr8AAdMAAiQ_AAJVA2hIAVvZ-JnLXns7BA"
+
       - name: Send Telegram Notification (Success)
         uses: appleboy/telegram-action@master
         if: success()
