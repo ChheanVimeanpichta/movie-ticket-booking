@@ -66,13 +66,7 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
             -d chat_id="${{ secrets.TELEGRAM_TO }}" \
-            -d sticker="CAACAgIAAxkBAAERUwxqIFkagZkp7hv44xv3pB-Fxr8AAdMAAiQ_AAJVA2hIAVvZ-JnLXns7BA"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
-            -d chat_id="${{ secrets.TELEGRAM_TO }}" \
             -d sticker="CAACAgUAAxkBAAERnjhqaKaq1MAUePutHWKxn2tJqkJcwwACnR0AAmJaIFfm9Eeebau1Vj0E"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
-            -d chat_id="${{ secrets.TELEGRAM_TO }}" \
-            -d sticker="CAACAgIAAxkBAAERnjRqaKaLMjN7XRTnrWtHGxsFXZ4SKQACNDoAArR2CUgmpTx1tcQieD0E"
 
       - name: Send Telegram Notification (Success)
         uses: appleboy/telegram-action@master
