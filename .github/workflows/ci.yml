@@ -66,7 +66,7 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
             -d chat_id="${{ secrets.TELEGRAM_TO }}" \
-            -d sticker="CAACAgUAAxkBAAERnjhqaKaq1MAUePutHWKxn2tJqkJcwwACnR0AAmJaIFfm9Eeebau1Vj0E"
+            -d sticker="CAACAgIAAxkBAAERnjRqaKaLMjN7XRTnrWtHGxsFXZ4SKQACNDoAArR2CUgmpTx1tcQieD0E"
 
       - name: Send Telegram Notification (Success)
         uses: appleboy/telegram-action@master
@@ -81,6 +81,13 @@ jobs:
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.event.head_commit.message }}
             Actor: ${{ github.actor }}
+
+      - name: Send Telegram Sticker
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
+            -d chat_id="${{ secrets.TELEGRAM_TO }}" \
+            -d sticker="CAACAgUAAxkBAAERnjhqaKaq1MAUePutHWKxn2tJqkJcwwACnR0AAmJaIFfm9Eeebau1Vj0E"
 
       - name: Send Telegram Notification (Failure)
         uses: appleboy/telegram-action@master
