@@ -25,6 +25,7 @@ jobs:
         working-directory: frontend
         run: |
           npm install
+          chmod +x node_modules/.bin/vite
           npm run build
 
       - name: Copy Files to EC2
