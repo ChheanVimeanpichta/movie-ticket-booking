@@ -4,7 +4,7 @@ import { MapPin, ChevronDown, Search, Bell, Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
   { label: "Movies", to: "/" },
-  { label: "LOVE", to: "/theaters" },
+  { label: "Theaters", to: "/theaters" },
   { label: "Offers", to: "/offers" },
   { label: "About Us", to: "/about" },
 ];
