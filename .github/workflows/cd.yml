@@ -62,13 +62,6 @@ jobs:
             sudo docker run -d --name ui-rest -p 5173:5173 ui-rest
             sudo docker image prune -f
 
-      - name: Send Telegram Sticker
-        if: success()
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
-            -d chat_id="${{ secrets.TELEGRAM_TO }}" \
-            -d sticker="CAACAgIAAxkBAAERnjRqaKaLMjN7XRTnrWtHGxsFXZ4SKQACNDoAArR2CUgmpTx1tcQieD0E"
-
       - name: Send Telegram Notification (Success)
         uses: appleboy/telegram-action@master
         if: success()
@@ -85,11 +78,11 @@ jobs:
             
 
       - name: Send Telegram Sticker
-        if: failure()
+        if: success()
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
             -d chat_id="${{ secrets.TELEGRAM_TO }}" \
-            -d sticker="CAACAgUAAxkBAAERnjhqaKaq1MAUePutHWKxn2tJqkJcwwACnR0AAmJaIFfm9Eeebau1Vj0E"
+            -d sticker="CAACAgIAAxkBAAERnjRqaKaLMjN7XRTnrWtHGxsFXZ4SKQACNDoAArR2CUgmpTx1tcQieD0E"
 
       - name: Send Telegram Notification (Failure)
         uses: appleboy/telegram-action@master
@@ -105,3 +98,10 @@ jobs:
             Commit: ${{ github.event.head_commit.message }}
             Actor: ${{ github.actor }}
             Please check the GitHub Actions logs immediately!
+
+      - name: Send Telegram Sticker
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendSticker" \
+            -d chat_id="${{ secrets.TELEGRAM_TO }}" \
+            -d sticker="CAACAgUAAxkBAAERnjhqaKaq1MAUePutHWKxn2tJqkJcwwACnR0AAmJaIFfm9Eeebau1Vj0E"
