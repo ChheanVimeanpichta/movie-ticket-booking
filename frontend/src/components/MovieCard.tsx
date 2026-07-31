@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Star, Info, Calendar } from "lucide-react";
 import type { Movie } from "@/data/movies";
 
@@ -9,6 +9,7 @@ export default function MovieCard({
   movie: Movie;
   variant?: "poster" | "landscape";
 }) {
+  const navigate = useNavigate();
   if (variant === "landscape") {
     return (
       <Link
@@ -79,9 +80,16 @@ export default function MovieCard({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="flex-1 inline-flex items-center justify-center rounded bg-cine-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-cine-red/80">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate(`/select-screen/${movie.id}`);
+              }}
+              className="flex-1 inline-flex items-center justify-center rounded bg-cine-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-cine-red/80"
+            >
               Book
-            </span>
+            </button>
             <button
               type="button"
               onClick={(e) => {
