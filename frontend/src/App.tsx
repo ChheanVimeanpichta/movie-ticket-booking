@@ -6,6 +6,8 @@ import SelectScreenPage from "@/pages/SelectScreenPage";
 import SeatSelectionPage from "@/pages/SeatSelectionPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import Theaters from "@/pages/Theaters";
+import About from "./pages/About-backup";
+
 
 export default function App() {
   return (
@@ -17,7 +19,7 @@ export default function App() {
       <Route path="/select-seat/:id" element={<SeatSelectionPage />} />
       <Route path="/checkout/:id" element={<CheckoutPage />} />
       <Route path="/theaters" element={<Theaters />} />
+      <Route path="/about" element={<About />} />
     </Routes>
   );
 }
-
