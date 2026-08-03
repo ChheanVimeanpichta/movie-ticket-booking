@@ -14,6 +14,7 @@ export default {
         'cine-text': '#9CA3AF',
         'cine-text-light': '#D1D5DB',
         'cine-white': '#F9FAFB',
+        'cine-gold': '#f4c430',
       },
       fontFamily: {
         display: ['"Inter"', 'system-ui', 'sans-serif'],

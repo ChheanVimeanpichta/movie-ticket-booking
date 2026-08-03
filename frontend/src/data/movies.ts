@@ -20,7 +20,7 @@ export const nowShowing: Movie[] = [
     rating: "PG-13",
     runtime: "2h 21m",
     score: 8.4,
-    poster: "https://picsum.photos/seed/iron-poster/400/600",
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRWY9YlOpu9dKsNZb7Va9AgzIdVPXZlJs-19XeP7JkudA&s=10",
     landscape: "https://picsum.photos/seed/iron-land/800/450",
     synopsis:
       "A disgraced detective is pulled back into the city's underworld when the one case he never closed resurfaces.",
@@ -33,33 +33,33 @@ export const nowShowing: Movie[] = [
     rating: "R",
     runtime: "1h 47m",
     score: 7.6,
-    poster: "https://picsum.photos/seed/hollow-poster/400/600",
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT6fUAg8ksc3Djlwp5yxGqiDNS_ChIjas1yskFqOyGPPQ&s=10",
     landscape: "https://picsum.photos/seed/hollow-land/800/450",
     synopsis:
       "A family inherits a house that remembers every sound it has ever heard and starts playing them back.",
     showtimes: ["17:30", "20:00", "22:45"],
   },
   {
-    id: "pixel-static",
-    title: "Pixel Static",
+    id: "moana-static",
+    title: "Moana 2: Static",
     genre: "Animation / Sci-Fi",
     rating: "PG",
     runtime: "1h 38m",
     score: 8.9,
-    poster: "https://picsum.photos/seed/pixel-poster/400/600",
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQAqpvA_h7pG5nUeETP_dERgDuWswzPbs201Fyi6mfZdg&s=10",
     landscape: "https://picsum.photos/seed/pixel-land/800/450",
     synopsis:
       "In a city built from discarded code, one broken pixel sets out to find where the glitches go.",
     showtimes: ["11:00", "13:15", "16:00", "18:30"],
   },
   {
-    id: "frost-king",
-    title: "The Frost King",
+    id: "Dora",
+    title: "Dora and the Lost City of Gold",
     genre: "Fantasy / Adventure",
     rating: "PG-13",
     runtime: "2h 34m",
     score: 8.1,
-    poster: "https://picsum.photos/seed/frost-poster/400/600",
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQjYAbQLfa6xzRFKo4r-5VsnwMCsFHw8pZYNfKmgU8L0w&s=10",
     landscape: "https://picsum.photos/seed/frost-land/800/450",
     synopsis:
       "The last heir to a frozen throne must cross the Long Winter to reclaim a crown that despises her.",
@@ -198,6 +198,140 @@ export const comingSoon: Movie[] = [
     showtimes: [],
     releaseDate: "16 SEP 2026",
   },
+];
+
+export type GridMovie = {
+  id: string;
+  title: string;
+  genre: string;
+  score: number | null;
+  poster: string;
+  badge?: "IMAX" | "4DX" | "CineStar";
+  extra?: string;
+  hasBookBtn?: boolean;
+};
+
+export const nowShowingGrid: GridMovie[] = [
+  {
+    id: "avenger",
+    title: "Avengers: Endgame",
+    genre: "Action/Sci-Fi",
+    score: 8.9,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQWWatxhrUO2mPie7B5xc-V8DXxsGe9a4CFhAfBIvbJPA&s=10",
+    badge: "IMAX",
+    extra: "When the signal dies, the city follows.",
+    hasBookBtn: true,
+  },
+  {
+    id: "fairy secret",
+    title: "The Fairy Secret",
+    genre: "Action",
+    score: 7.4,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdLMFblwS4y1QbzHFKs9g150scJslcAsSxTcdJMwid4w&s=10",
+    badge: "4DX",
+    extra: "Every spire hides a secret.",
+  },
+  {
+    id: "jurrasic-echoes",
+    title: "Jurrasic Echoes",
+    genre: "Drama",
+    score: 9.2,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXVj1jwI4fGAbXd6dOf3emm0PzHhQj9-ZK6nv13pb5dQ&s=10",
+    badge: "CineStar",
+    extra: "Dir. A.G. Iñárritu",
+  },
+  {
+    id: "princes",
+    title: "The 12 dancing princesses",
+    genre: "Sci-Fi",
+    score: 8.1,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRtWdSsPc3Lf9zMSAufsmKPEQ-aAiFwWyIVXNghzTx5UA&s=10",
+    badge: "IMAX",
+    extra: "Beyond the known universe.",
+  },
+  {
+    id: "pirate-echoes",
+    title: "Pirate Fair: Echoes of the Sea",
+    genre: "Horror",
+    score: 6.8,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdXmUXa0G1ezo-TA0vrr_GAhisBMegQz09jeJbDCgkRw&s=10",
+    extra: "No vacancy. No escape.",
+  },
+  {
+    id: "spider-verse-2",
+    title: "SPIDER-MAN: INTO THE SPIDER-VERSE 2",
+    genre: "",
+    score: 8.5,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoGytKPuYMT7IQulS8QemehYHgNiNsOyuoxX2rbQsPdw&s=10",
+    badge: "4DX",
+    extra: "Rise of the empire.",
+    hasBookBtn: true,
+  },
+  {
+    id: "raya",
+    title: "Raya and the Last Dragon",
+    genre: "Mystery",
+    score: null,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQm9pl3ezvWPpgU1UoObqXTpjE5Q4GskYSfKcZJNNNvFw&s=10",
+    badge: "CineStar",
+    extra: "Trust no one.",
+  },
+  {
+    id: "sheep",
+    title: "Sheep Detective",
+    genre: "Sci-Fi/Drama",
+    score: null,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQnkapobjb_5fwfdC2YryPjTwmooJ8HLLcQIs0Aomi0A&s=10",
+    extra: "The signal came from nowhere.",
+  },
+  {
+    id: "avatar",
+    title: "Avatar: The Way of Water",
+    genre: "Thriller",
+    score: null,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsteWOIgIfjtkiYRnJNRzinTz0TXz3d3Z4bxdkoI1u2Q&s=10",
+    extra: "The mind is the final frontier.",
+  },
+  {
+    id: "hopper",
+    title: "HOPPER",
+    genre: "Action/Sci-Fi",
+    score: null,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTF2_jzf8Bot1lnxHSeU7iw5ZCTXLsAD9EkRWqOsVAzZw&s=10",
+    extra: "Humanity. Upgraded.",
+  },
+  {
+    id: "Forn",
+    title: "Tinker Bell and the Legend of the Neverbeast",
+    genre: "Mystery/Adventure",
+    score: null,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRxbLJ65BPJksC0H21bjjmYF8-0LfHkmVrHnwSo4o09kQ&s=10",
+    extra: "Humanity. Upgraded.",
+  },
+  {
+    id: "barbie",
+    title: "Barbie: Princess Charm School ",
+    genre: "Drama",
+    score: null,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ2LRKh6UujWBbI5KWrAY0EGn93XVUn-shxv0EMLZ6qGw&s=10",
+    extra: "Humanity. Upgraded.",
+  },
+  {
+    id: "swapp",
+    title: " Swapped",
+    genre: "Drama/Adventure",
+    score: null,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSF5wtLqYgJrada9i_nneLJWtnWe31R6zgAi541ky0bg&s=10",
+    extra: "Humanity. Upgraded.",
+  },
+  {
+    id: "mermaid",
+    title: " Barbie in a Mermaid Tale",
+    genre: "Drama/Adventure",
+    score: null,
+    poster: "https://m.media-amazon.com/images/M/MV5BZWMwYWFmMDgtYTAyMy00OWRjLTgxYTEtZWYyZjcwNDNjY2I0XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
+    extra: "Humanity. Upgraded.",
+  },  
 ];
 
 export const heroSlides = [

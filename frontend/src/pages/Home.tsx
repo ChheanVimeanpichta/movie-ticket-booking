@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MovieCard from "@/components/MovieCard";
 import { nowShowing, comingSoon, heroSlides } from "@/data/movies";
+import { Link } from "react-router-dom";
 import { Play, ArrowRight } from "lucide-react";
 
 export default function Home() {
@@ -74,13 +75,13 @@ export default function Home() {
               </p>
 
               <div className="mt-8 flex items-center gap-4">
-                <a
-                  href="#booking"
+                <Link
+                  to="/movies"
                   className="inline-flex items-center gap-2 rounded bg-cine-red px-7 py-3 font-body text-sm font-bold text-white transition-colors hover:bg-cine-red/90"
                 >
                   BOOK NOW
                   <ArrowRight size={16} />
-                </a>
+                </Link>
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
