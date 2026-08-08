@@ -7,35 +7,14 @@ import {
   Trophy,
   Utensils,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-[#0c0c0f] text-white">
-      {/* Navbar */}
-      <header className="border-b border-red-900/30">
-        <div className="max-w-7xl mx-auto flex items-center justify-between py-5 px-6">
-          <h1 className="text-2xl font-black text-red-500">CINESTAR</h1>
-
-          <nav className="hidden md:flex gap-8 text-sm text-gray-300">
-            <Link to="/">Movies</Link>
-            <Link to="/theaters">Theaters</Link>
-            <Link to="/offers">Offers</Link>
-            <Link
-              to="/about"
-              className="text-red-500 font-semibold border-b border-red-500"
-            >
-              About Us
-            </Link>
-          </nav>
-
-          <img
-            src="https://i.pravatar.cc/40"
-            className="rounded-full w-10 h-10"
-            alt=""
-          />
-        </div>
-      </header>
+    <>
+      <Header />
+      <main className="min-h-screen bg-[#0c0c0f] text-white">
 
       {/* Hero */}
       <section className="max-w-7xl mx-auto px-6 py-16">
@@ -146,54 +125,8 @@ export default function About() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-red-900/30 mt-16">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-10 px-6 py-14">
-          <div>
-            <h2 className="text-xl font-black text-red-500">CINESTAR</h2>
-
-            <p className="text-gray-400 mt-4">
-              Elevating the cinematic experience through innovation and digital
-              entertainment.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="font-bold mb-4">Quick Links</h3>
-
-            <ul className="space-y-3 text-gray-400">
-              <li>Movies</li>
-              <li>Theaters</li>
-              <li>Offers</li>
-              <li>About</li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-bold mb-4">Support</h3>
-
-            <ul className="space-y-3 text-gray-400">
-              <li>Contact</li>
-              <li>FAQ</li>
-              <li>Terms of Service</li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-bold mb-4">Social</h3>
-
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-red-600"></div>
-              <div className="w-10 h-10 rounded-full bg-red-600"></div>
-              <div className="w-10 h-10 rounded-full bg-red-600"></div>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center text-gray-500 text-sm pb-6">
-          © 2026 CineStar Studios. All Rights Reserved.
-        </div>
-      </footer>
-    </div>
+      </main>
+      <Footer />
+    </>
   );
 }
