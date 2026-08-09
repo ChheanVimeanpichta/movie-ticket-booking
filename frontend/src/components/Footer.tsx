@@ -4,17 +4,17 @@ const columns = [
   {
     heading: "Experience",
     links: [
-      { label: "Now Showing", to: "/" },
+      { label: "Now Showing", to: "/movies" },
       { label: "Coming Soon", to: "/coming-soon" },
       { label: "Cinemas", to: "/theaters" },
-      { label: "Gift Cards", to: "/gift-cards" },
+      
     ],
   },
   {
     heading: "Support",
     links: [
-      { label: "Help Center", to: "/help" },
-      { label: "Refund Policy", to: "/refunds" },
+      { label: "Help Center", to: "/about" },
+      // { label: "Refund Policy", to: "/refunds" },
       { label: "Contact Us", to: "/contact" },
       { label: "Accessibility", to: "/accessibility" },
     ],
