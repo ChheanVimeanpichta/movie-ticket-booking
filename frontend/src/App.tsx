@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import ScrollToTop from "@/components/ScrollToTop";
 import Home from "@/pages/Home";
 import ComingSoon from "@/pages/ComingSoon";
 import ComingSoonDetailPage from "@/pages/ComingSoonDetailPage";
@@ -11,10 +12,14 @@ import About from "./pages/About-backup";
 import NotificationsPage from "@/pages/NotificationsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import TicketPage from "@/pages/TicketPage";
+import Login from "@/pages/auth/Login";
+import Signup from "@/pages/auth/Signup";
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/coming-soon" element={<ComingSoon />} />
       <Route path="/coming-soon/:id" element={<ComingSoonDetailPage />} />
@@ -27,6 +32,9 @@ export default function App() {
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/ticket/:id" element={<TicketPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
     </Routes>
+    </>
   );
 }

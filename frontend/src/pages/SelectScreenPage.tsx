@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { nowShowing, nowShowingGrid } from "@/data/movies";
 import type { Movie } from "@/data/movies";
 import type { GridMovie } from "@/data/movies";
+import { useAuth } from "@/context/AuthContext";
 
 type MovieData = (Movie | GridMovie) & { synopsis?: string; rating?: string; runtime?: string; landscape?: string };
 
@@ -137,6 +138,7 @@ const CINEMA_SESSIONS: Record<string, SessionCategory[]> = {
 export default function SelectScreenPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAuthenticated, openLoginPopup } = useAuth();
   const [selectedDate, setSelectedDate] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(0);
   const [selectedTime, setSelectedTime] = useState<string | null>("17:00");
@@ -456,7 +458,20 @@ export default function SelectScreenPage() {
 
                 <div className="mt-6 border-t border-cine-border pt-6">
                   <button
-                    onClick={() =>
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        openLoginPopup(() =>
+                          navigate(`/select-seat/${id}`, {
+                            state: {
+                              date: DATES[selectedDate].full,
+                              cinema: selectedCinema,
+                              format: category.name,
+                              time: selectedTime,
+                            },
+                          })
+                        );
+                        return;
+                      }
                       navigate(`/select-seat/${id}`, {
                         state: {
                           date: DATES[selectedDate].full,
@@ -464,8 +479,8 @@ export default function SelectScreenPage() {
                           format: category.name,
                           time: selectedTime,
                         },
-                      })
-                    }
+                      });
+                    }}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-cine-red py-3 text-sm font-bold text-white transition-colors hover:bg-cine-red/90"
                   >
                     Proceed to Seat Selection

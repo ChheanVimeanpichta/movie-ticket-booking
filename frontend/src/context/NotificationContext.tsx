@@ -74,62 +74,82 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
-    const saved = localStorage.getItem("cinestar_notifications");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse notifications from localStorage", e);
-      }
-    }
-    return INITIAL_NOTIFICATIONS;
-  });
+function loadFromStorage<T>(email: string, key: string, fallback: T): T {
+  if (!email) return fallback;
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const initialEmail = localStorage.getItem("cinestar_active_user_email") || "";
+
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() =>
+    loadFromStorage(initialEmail, `cinestar_notifications_${initialEmail}`, INITIAL_NOTIFICATIONS)
+  );
+  const [bookingHistory, setBookingHistory] = useState<BookingHistoryItem[]>(() =>
+    loadFromStorage(initialEmail, `cinestar_booking_history_${initialEmail}`, [])
+  );
+  const [reminders, setReminders] = useState<ReleaseReminder[]>(() =>
+    loadFromStorage(initialEmail, `cinestar_release_reminders_${initialEmail}`, [])
+  );
   const [latestAlert, setLatestAlert] = useState<NotificationItem | null>(null);
 
-  const [bookingHistory, setBookingHistory] = useState<BookingHistoryItem[]>(() => {
-    const saved = localStorage.getItem("cinestar_booking_history");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse booking history from localStorage", e);
+  const [userEmail, setUserEmail] = useState(initialEmail);
+
+  const bkKey = `cinestar_booking_history_${userEmail}`;
+  const ntfKey = `cinestar_notifications_${userEmail}`;
+  const remKey = `cinestar_release_reminders_${userEmail}`;
+
+  useEffect(() => {
+    const check = () => {
+      const email = localStorage.getItem("cinestar_active_user_email") || "";
+      if (email !== userEmail) {
+        setUserEmail(email);
+        if (!email) {
+          setNotifications(INITIAL_NOTIFICATIONS);
+          setBookingHistory([]);
+          setReminders([]);
+        } else {
+          setNotifications(loadFromStorage(email, `cinestar_notifications_${email}`, INITIAL_NOTIFICATIONS));
+          setBookingHistory(loadFromStorage(email, `cinestar_booking_history_${email}`, []));
+          setReminders(loadFromStorage(email, `cinestar_release_reminders_${email}`, []));
+        }
       }
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "cinestar_active_user_email") check();
+    };
+    const authHandler = () => check();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("cinestar_auth_changed", authHandler);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("cinestar_auth_changed", authHandler);
+    };
+  }, [userEmail]);
+
+  useEffect(() => {
+    if (userEmail) {
+      localStorage.setItem(ntfKey, JSON.stringify(notifications));
     }
-    return [];
-  });
+  }, [notifications, ntfKey, userEmail]);
 
   useEffect(() => {
-    localStorage.setItem("cinestar_notifications", JSON.stringify(notifications));
-  }, [notifications]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "cinestar_booking_history",
-      JSON.stringify(bookingHistory)
-    );
-  }, [bookingHistory]);
-
-  const [reminders, setReminders] = useState<ReleaseReminder[]>(() => {
-    const saved = localStorage.getItem("cinestar_release_reminders_v2");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse release reminders from localStorage", e);
-      }
+    if (userEmail) {
+      localStorage.setItem(bkKey, JSON.stringify(bookingHistory));
     }
-    return [];
-  });
+  }, [bookingHistory, bkKey, userEmail]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "cinestar_release_reminders_v2",
-      JSON.stringify(reminders)
-    );
-  }, [reminders]);
+    if (userEmail) {
+      localStorage.setItem(remKey, JSON.stringify(reminders));
+    }
+  }, [reminders, remKey, userEmail]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 

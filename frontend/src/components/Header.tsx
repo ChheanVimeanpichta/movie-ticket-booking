@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { MapPin, ChevronDown, Search, Bell, Menu, X } from "lucide-react";
+import { MapPin, ChevronDown, Search, Bell, Menu, X, User } from "lucide-react";
 import { useNotifications } from "@/context/NotificationContext";
 import { useProfile } from "@/context/ProfileContext";
+import { useAuth } from "@/context/AuthContext";
 import { nowShowingGrid } from "@/data/movies";
 
 const NAV_LINKS = [
@@ -22,6 +23,7 @@ export default function Header() {
   const navigate = useNavigate();
   const { unreadCount, latestAlert, clearLatestAlert } = useNotifications();
   const { profile } = useProfile();
+  const { isAuthenticated } = useAuth();
 
   const results = nowShowingGrid
     .filter(
@@ -213,13 +215,17 @@ export default function Header() {
           <Link
             to="/profile"
             aria-label="Profile"
-            className="h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red"
+            className="h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center"
           >
-            <img
-              src={profile.avatar}
-              alt="User avatar"
-              className="h-full w-full object-cover"
-            />
+            {isAuthenticated ? (
+              <img
+                src={profile.avatar}
+                alt="User avatar"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <User size={16} className="text-cine-text" />
+            )}
           </Link>
         </div>
 
@@ -278,13 +284,17 @@ export default function Header() {
             <Link
               to="/profile"
               onClick={() => setMenuOpen(false)}
-              className="ml-auto h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red"
+              className="ml-auto h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center"
             >
-              <img
-                src={profile.avatar}
-                alt="User avatar"
-                className="h-full w-full object-cover"
-              />
+              {isAuthenticated ? (
+                <img
+                  src={profile.avatar}
+                  alt="User avatar"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <User size={16} className="text-cine-text" />
+              )}
             </Link>
           </div>
         </nav>

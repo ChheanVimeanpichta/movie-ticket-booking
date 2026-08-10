@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Settings,
@@ -11,11 +11,13 @@ import {
   User,
   X,
   Upload,
+  LogOut,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useNotifications } from "@/context/NotificationContext";
 import { useProfile, type Profile } from "@/context/ProfileContext";
+import { useAuth } from "@/context/AuthContext";
 
 const PAYMENT_METHODS = [
   {
@@ -35,31 +37,6 @@ const PAYMENT_METHODS = [
     name: "Wing",
     logoClass: "bg-[#14A44D] text-white",
     logoText: "Wing",
-  },
-];
-
-const SAMPLE_BOOKINGS = [
-  {
-    id: "sample-1",
-    title: "The Batman",
-    poster: "https://picsum.photos/seed/batman-poster/400/600",
-    badge: "IMAX 3D",
-    badgeOutlined: false,
-    date: "Friday, Oct 25",
-    time: "7:30 PM",
-    cinema: "Grand Vista",
-    seats: ["Row H, Seat 12", "Row H, Seat 13"],
-  },
-  {
-    id: "sample-2",
-    title: "Void Runner",
-    poster: "https://picsum.photos/seed/void-poster/400/600",
-    badge: "STANDARD",
-    badgeOutlined: true,
-    date: "Saturday, Oct 26",
-    time: "9:00 PM",
-    cinema: "Grand Vista",
-    seats: ["Row D, Seat 4", "Row D, Seat 5"],
   },
 ];
 
@@ -134,14 +111,41 @@ function BookingCard({
 }
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const { bookingHistory } = useNotifications();
   const { profile, updateProfile } = useProfile();
+  const { isAuthenticated, user, logout, openLoginPopup, updateUser } = useAuth();
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [draft, setDraft] = useState<Profile>(profile);
 
+  const displayName = isAuthenticated && user ? user.name : profile.name;
+  const displayAvatar = isAuthenticated && user ? user.avatar : profile.avatar;
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const isCustomAvatar = profile.avatar.startsWith("data:");
+      updateProfile({
+        name: user.name,
+        email: user.email,
+        phone: user.phone || profile.phone,
+        ...(isCustomAvatar ? {} : { avatar: user.avatar }),
+      });
+    }
+  }, [isAuthenticated, user?.email]);
+
   function openEditProfile() {
-    setDraft(profile);
+    if (isAuthenticated && user) {
+      setDraft({
+        ...profile,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || profile.phone,
+        avatar: user.avatar,
+      });
+    } else {
+      setDraft(profile);
+    }
     setShowEditProfile(true);
   }
 
@@ -154,6 +158,14 @@ export default function ProfilePage() {
       city: draft.city,
       bio: draft.bio,
     });
+    if (isAuthenticated) {
+      updateUser({
+        avatar: draft.avatar,
+        name: draft.name.trim() || profile.name,
+        email: draft.email,
+        phone: draft.phone,
+      });
+    }
     setShowEditProfile(false);
   }
 
@@ -181,42 +193,63 @@ export default function ProfilePage() {
 
   const accountRows = [
     { label: "Edit Profile", icon: User, onClick: openEditProfile },
-    {
-      label: "Payment Methods",
-      icon: CreditCard,
-      onClick: () => setShowPaymentMethods(true),
-    },
+    { label: "Payment Methods", icon: CreditCard, onClick: () => setShowPaymentMethods(true) },
     { label: "Purchase History", icon: History, to: "/notifications?tab=history" },
+    { label: "Logout", icon: LogOut, onClick: () => { logout(); } },
   ];
 
-  const activeBookings =
-    bookingHistory.length > 0
-      ? bookingHistory.map((b) => ({
-          id: b.id,
-          title: b.movieTitle,
-          poster: b.poster || "https://picsum.photos/seed/poster/400/600",
-          badge: "CONFIRMED",
-          badgeOutlined: false,
-          date: b.date,
-          time: b.time,
-          cinema: b.cinema,
-          seats: b.seats.length > 0 ? b.seats : ["—"],
-        }))
-      : SAMPLE_BOOKINGS;
+  const activeBookings = bookingHistory.map((b) => ({
+    id: b.id,
+    title: b.movieTitle,
+    poster: b.poster || "https://picsum.photos/seed/poster/400/600",
+    badge: "CONFIRMED",
+    badgeOutlined: false,
+    date: b.date,
+    time: b.time,
+    cinema: b.cinema,
+    seats: b.seats.length > 0 ? b.seats : ["—"],
+  }));
 
-  const totalBookings = bookingHistory.length > 0 ? bookingHistory.length : 12;
+  const totalBookings = bookingHistory.length > 0 ? bookingHistory.length : 0;
 
   return (
     <div className="min-h-screen bg-cine-bg">
       <Header />
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        {/* Profile Header */}
-        <div className="flex flex-col gap-6 md:flex-row md:items-center">
+        {/* Not logged in banner */}
+        {!isAuthenticated && (
+          <div className="mb-8 rounded-xl border border-cine-border bg-cine-card p-6 text-center">
+            <User size={40} className="mx-auto mb-3 text-cine-text" />
+            <h2 className="text-lg font-bold text-cine-white">Sign in to access your profile</h2>
+            <p className="mt-1 text-sm text-cine-text">
+              Track your bookings, earn rewards, and manage your account.
+            </p>
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <button
+                onClick={() => openLoginPopup()}
+                className="rounded-lg bg-cine-red px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-cine-red/80"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="rounded-lg border border-cine-border bg-cine-card px-6 py-2.5 text-sm font-bold text-cine-white transition-colors hover:bg-cine-card-hover"
+              >
+                Create Account
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isAuthenticated && (
+          <>
+            {/* Profile Header */}
+            <div className="flex flex-col gap-6 md:flex-row md:items-center">
           <div className="flex items-center gap-5">
             <div className="relative shrink-0">
               <img
-                src={profile.avatar}
-                alt={profile.name}
+                src={displayAvatar}
+                alt={displayName}
                 className="h-24 w-24 rounded-xl border-2 border-cine-red object-cover"
               />
               <span className="absolute -bottom-2 left-2 rounded bg-cine-red px-2 py-0.5 font-mono text-[10px] font-black tracking-widest text-white">
@@ -225,11 +258,11 @@ export default function ProfilePage() {
             </div>
             <div>
               <h1 className="font-display text-3xl font-black tracking-tight text-cine-white">
-                {profile.name}
+                {displayName}
               </h1>
               <p className="mt-1 flex items-center gap-2 text-sm text-cine-text">
                 <span className="h-2 w-2 rounded-full bg-cine-red" />
-                CineStar Elite Member since {profile.memberSince}
+                {user?.email}
               </p>
             </div>
           </div>
@@ -287,9 +320,15 @@ export default function ProfilePage() {
               </Link>
             </div>
             <div className="mt-5 space-y-4">
-              {activeBookings.map((b) => (
-                <BookingCard key={b.id} {...b} />
-              ))}
+              {activeBookings.length > 0 ? (
+                activeBookings.map((b) => <BookingCard key={b.id} {...b} />)
+              ) : (
+                <div className="rounded-xl border border-cine-border bg-cine-card p-6 text-center">
+                  <Ticket size={28} className="mx-auto mb-2 text-cine-text" />
+                  <p className="text-sm text-cine-text">No bookings yet</p>
+                  <p className="mt-1 text-xs text-cine-text">Your ticket history will appear here.</p>
+                </div>
+              )}
             </div>
           </section>
 
@@ -308,25 +347,25 @@ export default function ProfilePage() {
                   <Link
                     key={row.label}
                     to={row.to}
-                    className={`flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-medium text-cine-white transition-colors hover:bg-cine-card-hover ${
+                    className={`flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-medium transition-colors hover:bg-cine-card-hover ${
                       i > 0 ? "border-t border-cine-border" : ""
-                    }`}
+                    } ${row.label === "Logout" ? "text-cine-red" : "text-cine-white"}`}
                   >
-                    <row.icon size={16} className="shrink-0 text-cine-red" />
+                    <row.icon size={16} className={`shrink-0 ${row.label === "Logout" ? "text-cine-red" : "text-cine-red"}`} />
                     <span className="flex-1">{row.label}</span>
-                    <ChevronRight size={16} className="text-cine-text" />
+                    <ChevronRight size={16} className={`${row.label === "Logout" ? "text-cine-red" : "text-cine-text"}`} />
                   </Link>
                 ) : (
                   <button
                     key={row.label}
                     onClick={row.onClick}
-                    className={`flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-medium text-cine-white transition-colors hover:bg-cine-card-hover ${
+                    className={`flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-medium transition-colors hover:bg-cine-card-hover ${
                       i > 0 ? "border-t border-cine-border" : ""
-                    }`}
+                    } ${row.label === "Logout" ? "text-cine-red" : "text-cine-white"}`}
                   >
-                    <row.icon size={16} className="shrink-0 text-cine-red" />
+                    <row.icon size={16} className={`shrink-0 ${row.label === "Logout" ? "text-cine-red" : "text-cine-red"}`} />
                     <span className="flex-1">{row.label}</span>
-                    <ChevronRight size={16} className="text-cine-text" />
+                    <ChevronRight size={16} className={`${row.label === "Logout" ? "text-cine-red" : "text-cine-text"}`} />
                   </button>
                 )
               )}
@@ -343,6 +382,8 @@ export default function ProfilePage() {
             </div>
           </section>
         </div>
+          </>
+        )}
       </main>
 
       {showEditProfile && (
