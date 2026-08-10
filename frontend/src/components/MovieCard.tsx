@@ -13,7 +13,7 @@ export default function MovieCard({
   if (variant === "landscape") {
     return (
       <Link
-        to={`/movies/${movie.id}`}
+        to={`/coming-soon/${movie.id}`}
         className="group relative block overflow-hidden rounded bg-cine-card transition-all duration-300 hover:bg-cine-card-hover hover:-translate-y-1"
       >
         <div className="aspect-video w-full overflow-hidden">
@@ -45,7 +45,7 @@ export default function MovieCard({
   return (
     <div className="group relative block">
       <Link
-        to={`/movies/${movie.id}`}
+        to={`/select-screen/${movie.id}`}
         className="relative block overflow-hidden rounded bg-cine-card"
       >
         <div className="aspect-[3/4] w-full">

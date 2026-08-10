@@ -14,7 +14,7 @@ function MovieGridCard({ movie }: { movie: GridMovie }) {
   return (
     <div className="group relative block">
       <Link
-        to={`/movies/${movie.id}`}
+        to={`/select-screen/${movie.id}`}
         className="relative block overflow-hidden rounded bg-cine-card"
       >
         <div className="aspect-[3/4] w-full">

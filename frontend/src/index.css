@@ -9,3 +9,14 @@ body {
   background: #0A0A0A;
   color: #F9FAFB;
 }
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .print-area,
+  .print-area * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

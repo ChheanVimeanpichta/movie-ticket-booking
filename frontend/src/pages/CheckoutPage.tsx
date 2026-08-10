@@ -16,6 +16,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import type { Movie } from "@/data/movies";
 import type { GridMovie } from "@/data/movies";
+import { useNotifications } from "@/context/NotificationContext";
 
 type MovieData = (Movie | GridMovie) & {
   synopsis?: string;
@@ -80,10 +81,25 @@ export default function CheckoutPage() {
     useState<(typeof PAYMENT_METHODS)[number] | null>(null);
   const [modalStep, setModalStep] = useState<"qr" | "upload">("qr");
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] =
     useState<(typeof PAYMENT_METHODS)[number] | null>(null);
   const [paid, setPaid] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { addNotification, addToBookingHistory } = useNotifications();
+
+  useEffect(() => {
+    if (!proofFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(proofFile);
+    setPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [proofFile]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -166,7 +182,7 @@ export default function CheckoutPage() {
           to="/"
           className="mt-8 rounded-full border border-cine-border bg-cine-card px-8 py-3 text-sm font-bold text-cine-white transition-colors hover:border-cine-red hover:bg-cine-card-hover"
         >
-          Back to Home
+          Back to Home~
         </Link>
       </div>
     );
@@ -312,7 +328,28 @@ export default function CheckoutPage() {
 
             <button
               disabled={!proofSubmitted}
-              onClick={() => setPaid(true)}
+              onClick={() => {
+                setPaid(true);
+                addNotification({
+                  title: "Booking Confirmed",
+                  description: `Your tickets for ${movie.title} (${formatLabel}) have been confirmed. Seats: ${
+                    seats.length > 0 ? seats.join(", ") : "—"
+                  }. Enjoy the show!`,
+                  category: "Bookings",
+                  badge: "Ticket",
+                  iconType: "ticket",
+                });
+                addToBookingHistory({
+                  movieTitle: movie.title,
+                  poster: movie.poster,
+                  cinema: cinemaLabel,
+                  date: dateLabel,
+                  time: timeLabel,
+                  seats,
+                  ticketCount,
+                  total,
+                });
+              }}
               className={`mt-5 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white transition-all ${
                 proofSubmitted
                   ? "bg-gradient-to-b from-[#E4162A] to-[#9C0F1F] shadow-[0_0_24px_rgba(228,22,42,0.45)] hover:shadow-[0_0_32px_rgba(228,22,42,0.6)]"
@@ -386,15 +423,30 @@ export default function CheckoutPage() {
                   {activeProvider.name} &bull; ${total.toFixed(2)}
                 </p>
                 <label
-                  className="mt-5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-cine-border bg-cine-bg p-8 text-center transition-colors hover:border-cine-red/60"
+                  className="relative mt-5 flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-cine-border bg-cine-bg p-4 text-center transition-colors hover:border-cine-red/60"
                 >
-                  <Upload size={24} className="text-cine-red" />
-                  <span className="text-sm font-semibold text-cine-white">
-                    Upload proof of payment
-                  </span>
-                  <span className="text-[11px] text-cine-text">
-                    Upload your payment screenshot
-                  </span>
+                  {previewUrl ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <img
+                        src={previewUrl}
+                        alt="Proof of payment preview"
+                        className="max-h-48 w-auto rounded-lg object-contain shadow-md"
+                      />
+                      <span className="text-xs font-medium text-cine-text hover:text-cine-white">
+                        Click to change image
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload size={24} className="text-cine-red" />
+                      <span className="text-sm font-semibold text-cine-white">
+                        Upload proof of payment
+                      </span>
+                      <span className="text-[11px] text-cine-text">
+                        Upload your payment screenshot
+                      </span>
+                    </>
+                  )}
                   <input
                     ref={fileInputRef}
                     type="file"
