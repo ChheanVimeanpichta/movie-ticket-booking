@@ -7,6 +7,8 @@ import SelectScreenPage from "@/pages/SelectScreenPage";
 import SeatSelectionPage from "@/pages/SeatSelectionPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import Theaters from "@/pages/Theaters";
+import Offers from "@/pages/Offers";
+import OfferDetail from "@/pages/Offerdetail";
 import About from "./pages/About-backup";
 import NotificationsPage from "@/pages/NotificationsPage";
 import ProfilePage from "@/pages/ProfilePage";
@@ -27,6 +29,8 @@ export default function App() {
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/ticket/:id" element={<TicketPage />} />
+      <Route path="/offers" element={<Offers />} />
+      <Route path="/offers/:offerId" element={<OfferDetail />} />
     </Routes>
   );
 }
