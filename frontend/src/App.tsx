@@ -7,7 +7,8 @@ import SeatSelectionPage from "@/pages/SeatSelectionPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import Theaters from "@/pages/Theaters";
 import Offers from "@/pages/Offers";
-import ClaimOffer from "./pages/ClaimOffer";
+import OfferDetail from "@/pages/Offerdetail";
+
 export default function App() {
   return (
     <Routes>
@@ -19,8 +20,7 @@ export default function App() {
       <Route path="/checkout/:id" element={<CheckoutPage />} />
       <Route path="/theaters" element={<Theaters />} />
       <Route path="/offers" element={<Offers />} />
-      <Route path="/claim-offer" element={<ClaimOffer />} />
+      <Route path="/offers/:offerId" element={<OfferDetail />} />
     </Routes>
   );
 }
-
