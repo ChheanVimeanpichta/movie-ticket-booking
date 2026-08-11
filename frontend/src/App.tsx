@@ -9,6 +9,7 @@ import SeatSelectionPage from "@/pages/SeatSelectionPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import Offers from "@/pages/Offers";
 import ClaimOffer from "./pages/ClaimOffer";
+import OfferDetail from "@/pages/Offerdetail";
 import Theaters from "@/pages/Theaters";
 import About from "./pages/About-backup";
 import NotificationsPage from "@/pages/NotificationsPage";
@@ -31,6 +32,7 @@ export default function App() {
       <Route path="/checkout/:id" element={<CheckoutPage />} />
       <Route path="/offers" element={<Offers />} />
       <Route path="/claim-offer" element={<ClaimOffer />} />
+      <Route path="/offers/:offerId" element={<OfferDetail />} />
       <Route path="/theaters" element={<Theaters />} />
       <Route path="/about" element={<About />} />
       <Route path="/notifications" element={<NotificationsPage />} />
