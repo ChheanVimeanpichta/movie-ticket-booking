@@ -125,7 +125,7 @@ export default function OfferDetail() {
 
   return (
     <main className="flex min-h-screen flex-col bg-black text-white">
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+      <div className="mx-auto w-full max-w-7xl px-6 py-14">
         {/* Back navigation */}
         <button
           type="button"
