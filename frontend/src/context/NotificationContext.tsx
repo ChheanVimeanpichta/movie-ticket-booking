@@ -49,28 +49,7 @@ interface NotificationContextType {
   addReminder: (reminder: ReleaseReminder) => void;
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    title: "Booking Confirmed",
-    description: "Your tickets for Avatar: The Way of Water (IMAX) have been confirmed.",
-    timestamp: "2 mins ago",
-    unread: true,
-    category: "Bookings",
-    badge: "Ticket",
-    iconType: "ticket",
-  },
-  {
-    id: "2",
-    title: "Showtime Reminder",
-    description: "Don't forget! Your movie starts in 2 hours at Hall 4.",
-    timestamp: "1 hour ago",
-    unread: true,
-    category: "Bookings",
-    badge: "IMAX",
-    iconType: "bell",
-  },
-];
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 

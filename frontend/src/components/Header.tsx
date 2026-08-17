@@ -217,7 +217,7 @@ export default function Header() {
             aria-label="Profile"
             className="h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center"
           >
-            {isAuthenticated ? (
+            {isAuthenticated && profile.avatar ? (
               <img
                 src={profile.avatar}
                 alt="User avatar"
@@ -286,7 +286,7 @@ export default function Header() {
               onClick={() => setMenuOpen(false)}
               className="ml-auto h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center"
             >
-              {isAuthenticated ? (
+              {isAuthenticated && profile.avatar ? (
                 <img
                   src={profile.avatar}
                   alt="User avatar"

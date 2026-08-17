@@ -247,11 +247,17 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-6 md:flex-row md:items-center">
           <div className="flex items-center gap-5">
             <div className="relative shrink-0">
-              <img
-                src={displayAvatar}
-                alt={displayName}
-                className="h-24 w-24 rounded-xl border-2 border-cine-red object-cover"
-              />
+              {displayAvatar ? (
+                <img
+                  src={displayAvatar}
+                  alt={displayName}
+                  className="h-24 w-24 rounded-xl border-2 border-cine-red object-cover"
+                />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-cine-red bg-cine-card">
+                  <User size={40} className="text-cine-text" />
+                </div>
+              )}
               <span className="absolute -bottom-2 left-2 rounded bg-cine-red px-2 py-0.5 font-mono text-[10px] font-black tracking-widest text-white">
                 ELITE
               </span>
@@ -411,11 +417,17 @@ export default function ProfilePage() {
             </p>
 
             <div className="mt-5 flex items-center gap-4">
-              <img
-                src={draft.avatar}
-                alt="Profile preview"
-                className="h-16 w-16 shrink-0 rounded-xl border-2 border-cine-red object-cover"
-              />
+              {draft.avatar ? (
+                <img
+                  src={draft.avatar}
+                  alt="Profile preview"
+                  className="h-16 w-16 shrink-0 rounded-xl border-2 border-cine-red object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-cine-red bg-cine-card">
+                  <User size={28} className="text-cine-text" />
+                </div>
+              )}
               <label className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-cine-border bg-cine-bg px-4 py-4 text-center transition-colors hover:border-cine-red/60">
                 <Upload size={18} className="text-cine-red" />
                 <span className="text-xs font-semibold text-cine-white">

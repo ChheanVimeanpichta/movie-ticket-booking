@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: matchedEntry.name,
         email: matchedEntry.email,
         phone: matchedEntry.phone || "",
-        avatar: `https://picsum.photos/seed/${encodeURIComponent(matchedEntry.name)}/100/100`,
+        avatar: "",
       };
       setUser(loggedInUser);
       return true;

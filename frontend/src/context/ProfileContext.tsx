@@ -17,7 +17,7 @@ interface ProfileContextType {
 
 const DEFAULT_PROFILE: Profile = {
   name: "Alex Rivera",
-  avatar: "https://picsum.photos/seed/avatar/100/100",
+  avatar: "",
   email: "alex.rivera@example.com",
   phone: "+1 (555) 012-3456",
   city: "London",
