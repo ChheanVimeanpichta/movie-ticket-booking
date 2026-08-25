@@ -3,8 +3,31 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String   @default("Admin")
+  password  String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+}
+
+model Customer {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  password     String?
+  avatarUrl    String?  @db.LongText
+  role         String   @default("Customer")
+  status       String   @default("Active")
+  joinDate     String?
+  bookingCount Int      @default(0)
+  createdAt    DateTime @default(now())
 }
 
 model User {
@@ -20,9 +43,9 @@ model User {
 model Movie {
   id          String      @id @default(uuid())
   title       String
-  description String?
+  description String?     @db.Text
   genre       String?
-  posterUrl   String?
+  posterUrl   String?     @db.Text
   showtimes   Showtime[]
 }
 

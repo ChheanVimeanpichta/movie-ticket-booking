@@ -119,40 +119,37 @@ export default function ProfilePage() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [draft, setDraft] = useState<Profile>(profile);
 
-  const displayName = isAuthenticated && user ? user.name : profile.name;
-  const displayAvatar = isAuthenticated && user ? user.avatar : profile.avatar;
+  const displayName = isAuthenticated && user ? (user.name || profile.name) : profile.name;
+  const displayAvatar = isAuthenticated && user?.avatar ? user.avatar : "";
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      const isCustomAvatar = profile.avatar.startsWith("data:");
       updateProfile({
         name: user.name,
         email: user.email,
-        phone: user.phone || profile.phone,
-        ...(isCustomAvatar ? {} : { avatar: user.avatar }),
+        phone: user.phone || "",
+        avatar: user.avatar || "",
       });
     }
-  }, [isAuthenticated, user?.email]);
+  }, [isAuthenticated, user?.email, user?.avatar, user?.name, user?.phone]);
 
   function openEditProfile() {
-    if (isAuthenticated && user) {
-      setDraft({
-        ...profile,
-        name: user.name,
-        email: user.email,
-        phone: user.phone || profile.phone,
-        avatar: user.avatar,
-      });
-    } else {
-      setDraft(profile);
-    }
+    setDraft({
+      ...profile,
+      name: user?.name || profile.name,
+      email: user?.email || profile.email,
+      phone: user?.phone || profile.phone,
+      avatar: user?.avatar || "",
+    });
     setShowEditProfile(true);
   }
 
   function saveEditProfile() {
+    const updatedName = draft.name.trim() || profile.name;
+    const updatedAvatar = draft.avatar || "";
     updateProfile({
-      name: draft.name.trim() || profile.name,
-      avatar: draft.avatar,
+      name: updatedName,
+      avatar: updatedAvatar,
       email: draft.email,
       phone: draft.phone,
       city: draft.city,
@@ -160,8 +157,8 @@ export default function ProfilePage() {
     });
     if (isAuthenticated) {
       updateUser({
-        avatar: draft.avatar,
-        name: draft.name.trim() || profile.name,
+        avatar: updatedAvatar,
+        name: updatedName,
         email: draft.email,
         phone: draft.phone,
       });

@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import Home from "@/pages/Home";
 import ComingSoon from "@/pages/ComingSoon";
@@ -40,6 +40,8 @@ export default function App() {
       <Route path="/ticket/:id" element={<TicketPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/users" element={<Navigate to="/profile" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </>
   );

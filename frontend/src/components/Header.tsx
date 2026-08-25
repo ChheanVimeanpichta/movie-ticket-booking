@@ -22,8 +22,8 @@ export default function Header() {
   const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { unreadCount, latestAlert, clearLatestAlert } = useNotifications();
-  const { profile } = useProfile();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const avatarToDisplay = isAuthenticated && user?.avatar ? user.avatar : "";
 
   const results = nowShowingGrid
     .filter(
@@ -217,9 +217,9 @@ export default function Header() {
             aria-label="Profile"
             className="h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center"
           >
-            {isAuthenticated && profile.avatar ? (
+            {isAuthenticated && avatarToDisplay ? (
               <img
-                src={profile.avatar}
+                src={avatarToDisplay}
                 alt="User avatar"
                 className="h-full w-full object-cover"
               />
@@ -286,9 +286,9 @@ export default function Header() {
               onClick={() => setMenuOpen(false)}
               className="ml-auto h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center"
             >
-              {isAuthenticated && profile.avatar ? (
+              {isAuthenticated && avatarToDisplay ? (
                 <img
-                  src={profile.avatar}
+                  src={avatarToDisplay}
                   alt="User avatar"
                   className="h-full w-full object-cover"
                 />

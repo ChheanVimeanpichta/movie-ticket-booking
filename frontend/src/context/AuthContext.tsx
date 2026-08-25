@@ -37,7 +37,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const USERS_KEY = "cinestar_users";
 const CURRENT_USER_KEY = "cinestar_current_user";
 
-function getStoredUsers(): Record<string, { name: string; email: string; password: string; phone: string }> {
+function getStoredUsers(): Record<string, { name: string; email: string; password: string; phone: string; avatar?: string }> {
   try {
     return JSON.parse(localStorage.getItem(USERS_KEY) || "{}");
   } catch {
@@ -61,10 +61,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAuthenticated = user !== null;
 
+  // Sync all stored customers to CineStar Admin Backend on load
+  useEffect(() => {
+    try {
+      const users = getStoredUsers();
+      Object.values(users).forEach((u) => {
+        if (u.email && u.name) {
+          fetch("http://localhost:5000/api/customers/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: u.name,
+              email: u.email.toLowerCase(),
+              password: u.password,
+              phone: u.phone || "",
+              avatarUrl: u.avatar || "",
+            }),
+          }).catch(() => {});
+        }
+      });
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (user) {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
       localStorage.setItem("cinestar_active_user_email", user.email);
+
+      // Real-time synchronization of active user to CineStar Admin Backend
+      try {
+        fetch("http://localhost:5000/api/customers/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: user.name,
+            email: user.email.toLowerCase(),
+            phone: user.phone || "",
+            avatarUrl: user.avatar || "",
+          }),
+        }).catch(() => {});
+      } catch {}
     } else {
       localStorage.removeItem(CURRENT_USER_KEY);
       localStorage.removeItem("cinestar_active_user_email");
@@ -73,11 +109,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const login = useCallback(async (emailOrUsername: string, password: string): Promise<boolean> => {
-    await new Promise((r) => setTimeout(r, 600));
+    // 1. Try real-time authentication against CineStar Admin Backend
+    try {
+      const res = await fetch("http://localhost:5000/api/customers/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailOrUsername, password }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.customer) {
+          const loggedInUser: User = {
+            id: data.customer.id,
+            name: data.customer.name,
+            email: data.customer.email,
+            phone: data.customer.phone || "",
+            avatar: data.customer.avatarUrl || "",
+          };
+          setUser(loggedInUser);
 
+          // Mirror into local storage
+          const users = getStoredUsers();
+          users[data.customer.email.toLowerCase()] = {
+            name: data.customer.name,
+            email: data.customer.email.toLowerCase(),
+            password,
+            phone: data.customer.phone || "",
+            avatar: data.customer.avatarUrl || "",
+          };
+          localStorage.setItem(USERS_KEY, JSON.stringify(users));
+          return true;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    // 2. Local storage fallback
     const users = getStoredUsers();
+    const query = emailOrUsername.toLowerCase();
     const matchedEntry = Object.values(users).find(
-      (u) => (u.email === emailOrUsername || u.name === emailOrUsername) && u.password === password
+      (u) => (u.email.toLowerCase() === query || u.name.toLowerCase() === query) && u.password === password
     );
 
     if (matchedEntry) {
@@ -86,9 +158,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: matchedEntry.name,
         email: matchedEntry.email,
         phone: matchedEntry.phone || "",
-        avatar: "",
+        avatar: matchedEntry.avatar || "",
       };
       setUser(loggedInUser);
+
+      // Real-time synchronization to CineStar Admin Backend
+      try {
+        fetch("http://localhost:5000/api/customers/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: matchedEntry.name,
+            email: matchedEntry.email.toLowerCase(),
+            password: matchedEntry.password,
+            phone: matchedEntry.phone || "",
+            avatarUrl: matchedEntry.avatar || "",
+          }),
+        }).catch(() => {});
+      } catch {}
+
       return true;
     }
 
@@ -96,15 +184,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signup = useCallback(async (name: string, email: string, password: string, phone: string): Promise<boolean> => {
-    await new Promise((r) => setTimeout(r, 600));
+    let createdCustId = crypto.randomUUID();
 
-    const users = getStoredUsers();
-    if (users[email]) {
-      return false;
+    // 1. Real-time synchronization to CineStar Admin Backend
+    try {
+      const res = await fetch("http://localhost:5000/api/customers/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email: email.toLowerCase(),
+          password,
+          phone,
+          avatarUrl: "",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.customer?.id) {
+          createdCustId = data.customer.id;
+        }
+      }
+    } catch {
+      // Offline fallback: data is preserved in localStorage
     }
 
-    users[email] = { name, email, password, phone };
+    // 2. Store in local state & auto-authenticate the created customer
+    const users = getStoredUsers();
+    users[email.toLowerCase()] = { name, email: email.toLowerCase(), password, phone, avatar: "" };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+    const newUser: User = {
+      id: createdCustId,
+      name,
+      email: email.toLowerCase(),
+      phone,
+      avatar: "",
+    };
+    setUser(newUser);
+
+    window.dispatchEvent(new Event("cinestar_auth_changed"));
     return true;
   }, []);
 
@@ -132,6 +251,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         users[googleUser.email] = { name: googleUser.name, email: googleUser.email, password: "google-oauth", phone: "" };
         localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
+        // Real-time synchronization to CineStar Admin Backend
+        try {
+          await fetch("http://localhost:5000/api/customers/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: googleUser.name,
+              email: googleUser.email,
+              password: "google-oauth",
+              phone: "",
+              avatarUrl: googleUser.avatar,
+            }),
+          });
+        } catch {
+          // Offline fallback
+        }
+
+        window.dispatchEvent(new Event("cinestar_auth_changed"));
         googleResolveRef.current?.(true);
       } catch {
         googleResolveRef.current?.(false);
@@ -150,7 +287,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [googleLogin]);
 
   const updateUser = useCallback((updates: Partial<User>) => {
-    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updates };
+      const users = getStoredUsers();
+      if (users[updated.email]) {
+        users[updated.email] = {
+          ...users[updated.email],
+          name: updated.name,
+          phone: updated.phone,
+          avatar: updated.avatar || "",
+        };
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+        // Real-time update to CineStar Admin Backend
+        try {
+          fetch("http://localhost:5000/api/customers/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: updated.name,
+              email: updated.email,
+              phone: updated.phone,
+              avatarUrl: updated.avatar,
+            }),
+          }).catch(() => {});
+        } catch {}
+      }
+      return updated;
+    });
   }, []);
 
   const logout = useCallback(() => {

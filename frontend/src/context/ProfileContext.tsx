@@ -16,13 +16,13 @@ interface ProfileContextType {
 }
 
 const DEFAULT_PROFILE: Profile = {
-  name: "Alex Rivera",
+  name: "",
   avatar: "",
-  email: "alex.rivera@example.com",
-  phone: "+1 (555) 012-3456",
+  email: "",
+  phone: "",
   city: "London",
-  bio: "Movie lover and CineStar Elite member since 2022.",
-  memberSince: "2022",
+  bio: "",
+  memberSince: "",
 };
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
