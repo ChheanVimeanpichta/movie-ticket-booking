@@ -61,27 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAuthenticated = user !== null;
 
-  // Sync all stored customers to CineStar Admin Backend on load
-  useEffect(() => {
-    try {
-      const users = getStoredUsers();
-      Object.values(users).forEach((u) => {
-        if (u.email && u.name) {
-          fetch("http://localhost:5000/api/customers/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: u.name,
-              email: u.email.toLowerCase(),
-              password: u.password,
-              phone: u.phone || "",
-              avatarUrl: u.avatar || "",
-            }),
-          }).catch(() => {});
-        }
-      });
-    } catch {}
-  }, []);
+
 
   useEffect(() => {
     if (user) {

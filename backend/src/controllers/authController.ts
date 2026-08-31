@@ -11,70 +11,55 @@ const toPublicUser = (user: { id: string; name: string; email: string; phone: st
   avatar: '',
 });
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+async function syncCustomerToDatabaseAndAdminSuite(user: {
+  id?: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  password?: string;
+}) {
+  const normalizedEmail = user.email.toLowerCase();
+  const joinDate = new Date().toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-function findAdminSuiteCustFile(): string {
-  const possible = [
-    path.resolve(__dirname, '../../../../cinestar-admin-suite/admin-backend/data/customers.json'),
-    path.resolve(__dirname, '../../../../../cinestar-admin-suite/admin-backend/data/customers.json'),
-    path.resolve(process.cwd(), '../cinestar-admin-suite/admin-backend/data/customers.json'),
-    path.resolve(process.cwd(), '../../cinestar-admin-suite/admin-backend/data/customers.json'),
-    'E:/Project_Management/cinestar-admin-suite/admin-backend/data/customers.json',
-  ];
-  for (const p of possible) {
-    if (fs.existsSync(p)) return p;
-  }
-  return 'E:/Project_Management/cinestar-admin-suite/admin-backend/data/customers.json';
-}
-
-function syncCustomerToAdminSuite(user: { id?: string; name: string; email: string; phone?: string | null }) {
+  // 1. Sync directly to MySQL Customer table if available
   try {
-    const adminSuiteCustFile = findAdminSuiteCustFile();
-    const dir = path.dirname(adminSuiteCustFile);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    let list: any[] = [];
-    if (fs.existsSync(adminSuiteCustFile)) {
-      const raw = fs.readFileSync(adminSuiteCustFile, 'utf-8').trim().replace(/^\uFEFF/, '');
-      if (raw) list = JSON.parse(raw);
-    }
-    const existingIdx = list.findIndex((c: any) => c.email.toLowerCase() === user.email.toLowerCase());
-    const joinDate = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-    if (existingIdx >= 0) {
-      list[existingIdx].name = user.name || list[existingIdx].name;
-      if (user.phone) list[existingIdx].phone = user.phone;
-    } else {
-      list.unshift({
-        id: `cust-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    await prisma.customer.upsert({
+      where: { email: normalizedEmail },
+      update: {
         name: user.name,
-        email: user.email.toLowerCase(),
-        phone: user.phone || '',
+        phone: user.phone ?? undefined,
+        password: user.password ?? undefined,
+      },
+      create: {
+        name: user.name,
+        email: normalizedEmail,
+        phone: user.phone || null,
+        password: user.password || null,
         role: 'Customer',
         status: 'Active',
         joinDate,
         bookingCount: 0,
-        createdAt: new Date().toISOString(),
-      });
-    }
-    fs.writeFileSync(adminSuiteCustFile, JSON.stringify(list, null, 2), 'utf-8');
-  } catch (err) {
-    // Non-blocking fallback
+      },
+    });
+  } catch {
+    // Non-blocking fallback if Customer table is not yet migrated
   }
 
+  // 2. Dynamic API sync to CineStar Admin Suite backend
   try {
-    fetch('http://localhost:5000/api/customers/register', {
+    const adminApiUrl = process.env.ADMIN_API_URL || 'http://localhost:5000/api/customers/register';
+    fetch(adminApiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: user.name,
-        email: user.email.toLowerCase(),
+        email: normalizedEmail,
         phone: user.phone || '',
+        password: user.password || undefined,
       }),
     }).catch(() => {});
   } catch {}
@@ -88,7 +73,8 @@ export const signup = async (req: Request, res: Response) => {
     phone?: string;
   };
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = email.toLowerCase();
+  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
     res.status(409).json({ message: 'An account with this email already exists.' });
     return;
@@ -96,19 +82,26 @@ export const signup = async (req: Request, res: Response) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { name, email, password: hashedPassword, phone: phone ?? null },
+    data: { name, email: normalizedEmail, password: hashedPassword, phone: phone ?? null },
   });
 
-  syncCustomerToAdminSuite(user);
+  // Sync dynamically to Customer database & admin suite API
+  syncCustomerToDatabaseAndAdminSuite({
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    password,
+  });
 
   res.status(201).json({ message: 'Account created successfully.', user: toPublicUser(user) });
 };
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body as { email: string; password: string };
+  const normalizedEmail = email.toLowerCase();
 
   const user = await prisma.user.findFirst({
-    where: { OR: [{ email }, { name: email }] },
+    where: { OR: [{ email: normalizedEmail }, { name: email }] },
   });
   if (!user) {
     res.status(401).json({ message: 'Invalid email/username or password.' });
@@ -121,7 +114,12 @@ export const login = async (req: Request, res: Response) => {
     return;
   }
 
-  syncCustomerToAdminSuite(user);
+  // Sync dynamically to Customer database & admin suite API
+  syncCustomerToDatabaseAndAdminSuite({
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+  });
 
   const token = signToken({ id: user.id, email: user.email });
   res.json({ message: 'Login successful.', token, user: toPublicUser(user) });
