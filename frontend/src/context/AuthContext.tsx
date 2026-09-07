@@ -47,8 +47,15 @@ function getStoredUsers(): Record<string, { name: string; email: string; passwor
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
+    // Clear any legacy persistent user from localStorage so default run is not signed in
     try {
-      const saved = localStorage.getItem(CURRENT_USER_KEY);
+      localStorage.removeItem(CURRENT_USER_KEY);
+      localStorage.removeItem("cinestar_active_user_email");
+      localStorage.removeItem("cinestar_profile");
+    } catch {}
+
+    try {
+      const saved = sessionStorage.getItem(CURRENT_USER_KEY);
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -65,23 +72,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-      localStorage.setItem("cinestar_active_user_email", user.email);
+      sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem("cinestar_active_user_email", user.email);
 
-      // Real-time synchronization of active user to CineStar Admin Backend
-      try {
-        fetch("http://localhost:5000/api/customers/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: user.name,
-            email: user.email.toLowerCase(),
-            phone: user.phone || "",
-            avatarUrl: user.avatar || "",
-          }),
-        }).catch(() => {});
-      } catch {}
+      // Verify active user is not suspended/disabled in CineStar Backend
+      fetch(`http://localhost:5000/api/customers/status/${encodeURIComponent(user.email)}`)
+        .then((res) => {
+          if (res.status === 403) {
+            return { isSuspended: true };
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (data && (data.isSuspended || data.status === "Suspended")) {
+            setUser(null);
+            sessionStorage.removeItem(CURRENT_USER_KEY);
+            sessionStorage.removeItem("cinestar_active_user_email");
+            localStorage.removeItem(CURRENT_USER_KEY);
+            localStorage.removeItem("cinestar_active_user_email");
+            const users = getStoredUsers();
+            delete users[user.email.toLowerCase()];
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            window.dispatchEvent(new Event("cinestar_auth_changed"));
+            alert("Your account has been disabled by an administrator.");
+          }
+        })
+        .catch(() => {});
     } else {
+      sessionStorage.removeItem(CURRENT_USER_KEY);
+      sessionStorage.removeItem("cinestar_active_user_email");
       localStorage.removeItem(CURRENT_USER_KEY);
       localStorage.removeItem("cinestar_active_user_email");
     }
@@ -89,6 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const login = useCallback(async (emailOrUsername: string, password: string): Promise<boolean> => {
+    let networkFailed = false;
+
     // 1. Try real-time authentication against CineStar Admin Backend
     try {
       const res = await fetch("http://localhost:5000/api/customers/login", {
@@ -96,9 +117,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailOrUsername, password }),
       });
+
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        // Account disabled by admin: purge local and session storage so user cannot login
+        const users = getStoredUsers();
+        delete users[emailOrUsername.toLowerCase()];
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        sessionStorage.removeItem(CURRENT_USER_KEY);
+        sessionStorage.removeItem("cinestar_active_user_email");
+        localStorage.removeItem(CURRENT_USER_KEY);
+        localStorage.removeItem("cinestar_active_user_email");
+        throw new Error(data.message || "Your account has been disabled by an administrator. Please contact support.");
+      }
+
       if (res.ok) {
         const data = await res.json();
         if (data.customer) {
+          if (data.customer.status === "Suspended") {
+            const users = getStoredUsers();
+            delete users[emailOrUsername.toLowerCase()];
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            sessionStorage.removeItem(CURRENT_USER_KEY);
+            sessionStorage.removeItem("cinestar_active_user_email");
+            localStorage.removeItem(CURRENT_USER_KEY);
+            localStorage.removeItem("cinestar_active_user_email");
+            throw new Error("Your account has been disabled by an administrator. Please contact support.");
+          }
+
           const loggedInUser: User = {
             id: data.customer.id,
             name: data.customer.name,
@@ -121,43 +167,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return true;
         }
       }
-    } catch {
-      // Offline fallback
+
+      // Backend responded with 401 or failure: DO NOT use local storage fallback!
+      return false;
+    } catch (err: any) {
+      if (err.message && (err.message.includes("disabled") || err.message.includes("support"))) {
+        throw err;
+      }
+      // Only trigger local storage fallback if the backend server is unreachable
+      networkFailed = true;
     }
 
-    // 2. Local storage fallback
-    const users = getStoredUsers();
-    const query = emailOrUsername.toLowerCase();
-    const matchedEntry = Object.values(users).find(
-      (u) => (u.email.toLowerCase() === query || u.name.toLowerCase() === query) && u.password === password
-    );
+    // 2. Local storage fallback ONLY when offline
+    if (networkFailed) {
+      const users = getStoredUsers();
+      const query = emailOrUsername.toLowerCase();
+      const matchedEntry = Object.values(users).find(
+        (u) => (u.email.toLowerCase() === query || u.name.toLowerCase() === query) && u.password === password
+      );
 
-    if (matchedEntry) {
-      const loggedInUser: User = {
-        id: crypto.randomUUID(),
-        name: matchedEntry.name,
-        email: matchedEntry.email,
-        phone: matchedEntry.phone || "",
-        avatar: matchedEntry.avatar || "",
-      };
-      setUser(loggedInUser);
-
-      // Real-time synchronization to CineStar Admin Backend
-      try {
-        fetch("http://localhost:5000/api/customers/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: matchedEntry.name,
-            email: matchedEntry.email.toLowerCase(),
-            password: matchedEntry.password,
-            phone: matchedEntry.phone || "",
-            avatarUrl: matchedEntry.avatar || "",
-          }),
-        }).catch(() => {});
-      } catch {}
-
-      return true;
+      if (matchedEntry) {
+        const loggedInUser: User = {
+          id: crypto.randomUUID(),
+          name: matchedEntry.name,
+          email: matchedEntry.email,
+          phone: matchedEntry.phone || "",
+          avatar: matchedEntry.avatar || "",
+        };
+        setUser(loggedInUser);
+        return true;
+      }
     }
 
     return false;
@@ -179,13 +218,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           avatarUrl: "",
         }),
       });
+
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "This account has been disabled by an administrator. Please contact support.");
+      }
+
       if (res.ok) {
         const data = await res.json();
         if (data.customer?.id) {
           createdCustId = data.customer.id;
         }
       }
-    } catch {
+    } catch (err: any) {
+      if (err.message && (err.message.includes("disabled") || err.message.includes("support"))) {
+        throw err;
+      }
       // Offline fallback: data is preserved in localStorage
     }
 
@@ -299,8 +347,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    if (user?.email) {
+      fetch("http://localhost:5000/api/customers/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email, name: user.name }),
+      }).catch(() => {});
+    }
     setUser(null);
-  }, []);
+    sessionStorage.removeItem(CURRENT_USER_KEY);
+    sessionStorage.removeItem("cinestar_active_user_email");
+    sessionStorage.removeItem("cinestar_profile");
+    localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem("cinestar_active_user_email");
+    localStorage.removeItem("cinestar_profile");
+    window.dispatchEvent(new Event("cinestar_auth_changed"));
+  }, [user]);
 
   const openLoginPopup = useCallback((onSuccess?: () => void) => {
     setPopupMode("login");
@@ -428,8 +490,8 @@ function LoginPopupContent({
       } else {
         setError("Invalid email/username or password.");
       }
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -552,8 +614,8 @@ function SignupPopupContent({
       } else {
         setError("An account with this email already exists.");
       }
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

@@ -4,6 +4,7 @@ import { MapPin, ChevronDown, Search, Bell, Menu, X, User } from "lucide-react";
 import { useNotifications } from "@/context/NotificationContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useAuth } from "@/context/AuthContext";
+import { useMovies } from "@/context/MovieContext";
 import { nowShowingGrid } from "@/data/movies";
 
 const NAV_LINKS = [
@@ -23,9 +24,12 @@ export default function Header() {
   const navigate = useNavigate();
   const { unreadCount, latestAlert, clearLatestAlert } = useNotifications();
   const { isAuthenticated, user } = useAuth();
+  const { movies } = useMovies();
   const avatarToDisplay = isAuthenticated && user?.avatar ? user.avatar : "";
 
-  const results = nowShowingGrid
+  const searchList = movies && movies.length > 0 ? movies : nowShowingGrid;
+
+  const results = searchList
     .filter(
       (movie) =>
         movie.title.toLowerCase().includes(query.trim().toLowerCase()) ||

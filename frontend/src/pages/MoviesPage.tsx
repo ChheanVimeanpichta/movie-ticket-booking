@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { nowShowingGrid } from "@/data/movies";
 import type { GridMovie } from "@/data/movies";
+import { useMovies } from "@/context/MovieContext";
 
 const GENRES = ["All", "Action", "Drama", "Sci-Fi", "Horror", "Animation"];
 const FORMATS = ["Standard", "IMAX", "4DX"];
@@ -90,11 +91,14 @@ function MovieGridCard({ movie }: { movie: GridMovie }) {
 }
 
 export default function MoviesPage() {
+  const { movies, loading } = useMovies();
   const [activeGenre, setActiveGenre] = useState("All");
   const [activeFormat, setActiveFormat] = useState("Standard");
   const [showAll, setShowAll] = useState(false);
 
-  const filteredMovies = nowShowingGrid.filter((movie) => {
+  const moviesList = movies && movies.length > 0 ? movies : nowShowingGrid;
+
+  const filteredMovies = moviesList.filter((movie) => {
     const matchesGenre =
       activeGenre === "All" ||
       movie.genre

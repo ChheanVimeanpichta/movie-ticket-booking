@@ -113,13 +113,13 @@ function BookingCard({
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { bookingHistory } = useNotifications();
-  const { profile, updateProfile } = useProfile();
+  const { profile, updateProfile, resetProfile } = useProfile();
   const { isAuthenticated, user, logout, openLoginPopup, updateUser } = useAuth();
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [draft, setDraft] = useState<Profile>(profile);
 
-  const displayName = isAuthenticated && user ? (user.name || profile.name) : profile.name;
+  const displayName = isAuthenticated && user ? (user.name || profile.name) : "";
   const displayAvatar = isAuthenticated && user?.avatar ? user.avatar : "";
 
   useEffect(() => {
@@ -192,7 +192,14 @@ export default function ProfilePage() {
     { label: "Edit Profile", icon: User, onClick: openEditProfile },
     { label: "Payment Methods", icon: CreditCard, onClick: () => setShowPaymentMethods(true) },
     { label: "Purchase History", icon: History, to: "/notifications?tab=history" },
-    { label: "Logout", icon: LogOut, onClick: () => { logout(); } },
+    {
+      label: "Logout",
+      icon: LogOut,
+      onClick: () => {
+        logout();
+        resetProfile();
+      },
+    },
   ];
 
   const activeBookings = bookingHistory.map((b) => ({

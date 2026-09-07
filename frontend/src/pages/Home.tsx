@@ -3,10 +3,13 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MovieCard from "@/components/MovieCard";
 import { nowShowing, comingSoon, heroSlides } from "@/data/movies";
+import { useMovies } from "@/context/MovieContext";
 import { Link } from "react-router-dom";
 import { Play, ArrowRight } from "lucide-react";
 
 export default function Home() {
+  const { nowShowingList } = useMovies();
+  const currentNowShowing = nowShowingList && nowShowingList.length > 0 ? nowShowingList : nowShowing;
   const [current, setCurrent] = useState(0);
 
   const next = useCallback(() => {
@@ -126,7 +129,7 @@ export default function Home() {
             </a>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {nowShowing.slice(0, 4).map((movie) => (
+            {currentNowShowing.slice(0, 4).map((movie) => (
               <MovieCard key={movie.id} movie={movie} variant="poster" />
             ))}
           </div>

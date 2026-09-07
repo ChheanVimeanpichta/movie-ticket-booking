@@ -27,6 +27,11 @@ async function syncCustomerToDatabaseAndAdminSuite(user: {
 
   // 1. Sync directly to MySQL Customer table if available
   try {
+    const existingCust = await prisma.customer.findUnique({ where: { email: normalizedEmail } });
+    if (existingCust && existingCust.status === 'Suspended') {
+      return; // Do not overwrite or reactivate suspended account
+    }
+
     await prisma.customer.upsert({
       where: { email: normalizedEmail },
       update: {
@@ -74,6 +79,18 @@ export const signup = async (req: Request, res: Response) => {
   };
 
   const normalizedEmail = email.toLowerCase();
+
+  // Check if disabled/suspended in Customer table
+  try {
+    const cust = await prisma.customer.findUnique({ where: { email: normalizedEmail } });
+    if (cust && cust.status === 'Suspended') {
+      res.status(403).json({
+        message: 'This account has been disabled by an administrator. Please contact support.',
+      });
+      return;
+    }
+  } catch {}
+
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
     res.status(409).json({ message: 'An account with this email already exists.' });
@@ -99,6 +116,17 @@ export const signup = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body as { email: string; password: string };
   const normalizedEmail = email.toLowerCase();
+
+  // Check if customer account is disabled/suspended in Customer table
+  try {
+    const cust = await prisma.customer.findUnique({ where: { email: normalizedEmail } });
+    if (cust && cust.status === 'Suspended') {
+      res.status(403).json({
+        message: 'Your account has been disabled by an administrator. Please contact support.',
+      });
+      return;
+    }
+  } catch {}
 
   const user = await prisma.user.findFirst({
     where: { OR: [{ email: normalizedEmail }, { name: email }] },

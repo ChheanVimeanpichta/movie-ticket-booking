@@ -64,7 +64,10 @@ function loadFromStorage<T>(email: string, key: string, fallback: T): T {
 }
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const initialEmail = localStorage.getItem("cinestar_active_user_email") || "";
+  const initialEmail =
+    sessionStorage.getItem("cinestar_active_user_email") ||
+    localStorage.getItem("cinestar_active_user_email") ||
+    "";
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() =>
     loadFromStorage(initialEmail, `cinestar_notifications_${initialEmail}`, INITIAL_NOTIFICATIONS)
@@ -85,7 +88,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     const check = () => {
-      const email = localStorage.getItem("cinestar_active_user_email") || "";
+      const email =
+        sessionStorage.getItem("cinestar_active_user_email") ||
+        localStorage.getItem("cinestar_active_user_email") ||
+        "";
       if (email !== userEmail) {
         setUserEmail(email);
         if (!email) {

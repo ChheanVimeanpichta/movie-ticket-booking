@@ -17,6 +17,7 @@ import Footer from "@/components/Footer";
 import type { Movie } from "@/data/movies";
 import type { GridMovie } from "@/data/movies";
 import { useNotifications } from "@/context/NotificationContext";
+import { useAuth } from "@/context/AuthContext";
 
 type MovieData = (Movie | GridMovie) & {
   synopsis?: string;
@@ -88,6 +89,7 @@ export default function CheckoutPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { addNotification, addToBookingHistory } = useNotifications();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!proofFile) {
@@ -328,7 +330,30 @@ export default function CheckoutPage() {
 
             <button
               disabled={!proofSubmitted}
-              onClick={() => {
+              onClick={async () => {
+                const bookingPayload = {
+                  userId: user?.id || (user as any)?.email || "cust-guest",
+                  customerName: user?.name || (user as any)?.email || "Customer",
+                  movieTitle: movie.title,
+                  screeningId: id || "sc-001",
+                  screeningDate: dateLabel,
+                  screeningTime: timeLabel,
+                  seats: seats,
+                  totalPrice: Number(total.toFixed(2)),
+                  paymentMethod: activeProvider?.name || selectedMethod?.name || "ABA Pay",
+                  status: "confirmed",
+                };
+
+                try {
+                  await fetch("http://localhost:5000/api/bookings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(bookingPayload),
+                  });
+                } catch (err) {
+                  console.warn("Failed to persist booking to MySQL backend:", err);
+                }
+
                 setPaid(true);
                 addNotification({
                   title: "Booking Confirmed",

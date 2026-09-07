@@ -6,6 +6,7 @@ import App from './App';
 import { NotificationProvider } from './context/NotificationContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { AuthProvider } from './context/AuthContext';
+import { MovieProvider } from './context/MovieContext';
 import './index.css';
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder.apps.googleusercontent.com';
@@ -17,7 +18,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <NotificationProvider>
             <ProfileProvider>
-              <App />
+              <MovieProvider>
+                <App />
+              </MovieProvider>
             </ProfileProvider>
           </NotificationProvider>
         </AuthProvider>
