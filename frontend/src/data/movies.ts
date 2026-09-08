@@ -336,37 +336,25 @@ export const nowShowingGrid: GridMovie[] = [
 
 export const heroSlides = [
   {
-    id: "iron-verdict",
     image: "https://picsum.photos/seed/hero-bg1/1600/900",
     title: "IRON",
     subtitle: "VERDICT",
-    badge: "NOW SHOWING",
-    genre: "Action / Crime",
-    release: "2024",
     description:
       "A disgraced detective is pulled back into the city's underworld when the one case he never closed resurfaces, threatening to destroy everything he rebuilt.",
     badges: ["NOW SHOWING", "IMAX 2D"],
   },
   {
-    id: "moana-static",
     image: "https://picsum.photos/seed/hero-bg2/1600/900",
     title: "PIXEL",
     subtitle: "STATIC",
-    badge: "NOW SHOWING",
-    genre: "Animation / Sci-Fi",
-    release: "2024",
     description:
       "In a city built from discarded code, one broken pixel sets out on an epic journey to find where all the glitches go before the entire system crashes.",
     badges: ["NOW SHOWING", "3D"],
   },
   {
-    id: "frost-king",
     image: "https://picsum.photos/seed/hero-bg3/1600/900",
     title: "THE FROST",
     subtitle: "KING",
-    badge: "NOW SHOWING",
-    genre: "Fantasy / Adventure",
-    release: "2024",
     description:
       "The last heir to a frozen throne must cross the Long Winter to reclaim a crown that despises her, with only a reluctant dragon as her companion.",
     badges: ["NOW SHOWING", "IMAX 2D"],
