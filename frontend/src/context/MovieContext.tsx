@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import {
   nowShowing as defaultNowShowing,
   nowShowingGrid as defaultNowShowingGrid,
+  comingSoon as defaultComingSoon,
   Movie,
   GridMovie,
 } from "@/data/movies";
@@ -9,6 +10,7 @@ import {
 interface MovieContextType {
   movies: GridMovie[];
   nowShowingList: Movie[];
+  comingSoonList: Movie[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -19,9 +21,25 @@ const MovieContext = createContext<MovieContextType | undefined>(undefined);
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
+function isLaterThanToday(releaseDate?: string | null): boolean {
+  if (!releaseDate) return false;
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const target = new Date(releaseDate);
+    if (!isNaN(target.getTime())) {
+      target.setHours(0, 0, 0, 0);
+      return target.getTime() > today.getTime();
+    }
+  } catch {}
+  return false;
+}
+
 export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [movies, setMovies] = useState<GridMovie[]>(defaultNowShowingGrid);
   const [nowShowingList, setNowShowingList] = useState<Movie[]>(defaultNowShowing);
+  const [comingSoonList, setComingSoonList] = useState<Movie[]>(defaultComingSoon);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +51,11 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        const mappedGrid: GridMovie[] = data.map((m: any) => ({
+        // Partition movies into Coming Soon (releaseDate > today) and Now Showing
+        const comingSoonData = data.filter((m: any) => isLaterThanToday(m.releaseDate));
+        const nowShowingData = data.filter((m: any) => !isLaterThanToday(m.releaseDate));
+
+        const mappedGrid: GridMovie[] = (nowShowingData.length > 0 ? nowShowingData : data).map((m: any) => ({
           id: m.id,
           title: m.title,
           genre: m.genre || "General",
@@ -44,7 +66,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           hasBookBtn: m.hasBookBtn ?? true,
         }));
 
-        const mappedNowShowing: Movie[] = data.map((m: any) => ({
+        const mappedNowShowing: Movie[] = (nowShowingData.length > 0 ? nowShowingData : data).map((m: any) => ({
           id: m.id,
           title: m.title,
           genre: m.genre || "Action / Adventure",
@@ -58,15 +80,38 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           releaseDate: m.releaseDate,
         }));
 
+        const mappedComingSoon: Movie[] = comingSoonData.map((m: any) => ({
+          id: m.id,
+          title: m.title,
+          genre: m.genre || "Coming Soon",
+          rating: "PG-13",
+          runtime: m.durationMins ? `${Math.floor(m.durationMins / 60)}h ${m.durationMins % 60}m` : "2h 00m",
+          score: m.score ? Number(m.score) : 0,
+          poster: m.poster || "https://picsum.photos/seed/movie/400/600",
+          landscape: m.poster || "https://picsum.photos/seed/movie/800/450",
+          synopsis: m.synopsis || "Releasing soon exclusively at CineStar.",
+          showtimes: [],
+          releaseDate: m.releaseDate ? new Date(m.releaseDate).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase() : undefined,
+        }));
+
+        const resolvedComingSoon = mappedComingSoon.length > 0
+          ? [...mappedComingSoon, ...defaultComingSoon.filter((def) => !mappedComingSoon.some((b) => b.id === def.id))]
+          : defaultComingSoon;
+
         setMovies(mappedGrid);
         setNowShowingList(mappedNowShowing);
+        setComingSoonList(resolvedComingSoon);
 
-        // Sync in-place so direct imports of nowShowingGrid/nowShowing get live data
+        // Sync in-place so direct imports of nowShowingGrid/nowShowing/comingSoon get live data
         defaultNowShowingGrid.length = 0;
         defaultNowShowingGrid.push(...mappedGrid);
 
         defaultNowShowing.length = 0;
         defaultNowShowing.push(...mappedNowShowing);
+
+        defaultComingSoon.length = 0;
+        defaultComingSoon.push(...resolvedComingSoon);
+
         setError(null);
       }
     } catch (err: any) {
@@ -96,12 +141,14 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (id: string) => {
       return (
         nowShowingList.find((m) => m.id === id) ||
+        comingSoonList.find((m) => m.id === id) ||
         movies.find((m) => m.id === id) ||
         defaultNowShowing.find((m) => m.id === id) ||
+        defaultComingSoon.find((m) => m.id === id) ||
         defaultNowShowingGrid.find((m) => m.id === id)
       );
     },
-    [nowShowingList, movies]
+    [nowShowingList, comingSoonList, movies]
   );
 
   return (
@@ -109,6 +156,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         movies,
         nowShowingList,
+        comingSoonList,
         loading,
         error,
         refetch: fetchMovies,

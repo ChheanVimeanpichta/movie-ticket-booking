@@ -14,13 +14,15 @@ import Footer from "@/components/Footer";
 import MovieCard from "@/components/MovieCard";
 import { comingSoon } from "@/data/movies";
 import { useNotifications } from "@/context/NotificationContext";
+import { useMovies } from "@/context/MovieContext";
 
 export default function ComingSoonDetailPage() {
   const { id } = useParams<string>();
   const [reminded, setReminded] = useState(false);
   const { addReminder, addNotification, reminders } = useNotifications();
+  const { comingSoonList, getMovieById } = useMovies();
 
-  const movie = comingSoon.find((m) => m.id === id);
+  const movie = (comingSoonList.find((m) => m.id === id) || (id ? getMovieById(id) : undefined) || comingSoon.find((m) => m.id === id)) as any;
 
   useEffect(() => {
     setReminded(false);
@@ -66,7 +68,7 @@ export default function ComingSoonDetailPage() {
     );
   }
 
-  const otherMovies = comingSoon.filter((m) => m.id !== movie.id).slice(0, 4);
+  const otherMovies = (comingSoonList.length > 1 ? comingSoonList : comingSoon).filter((m) => m.id !== movie.id).slice(0, 4);
 
   return (
     <div className="min-h-screen bg-cine-bg">

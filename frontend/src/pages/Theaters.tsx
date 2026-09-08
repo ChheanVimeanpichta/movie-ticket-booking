@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
@@ -26,9 +26,33 @@ export default function Theaters() {
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [venuesList, setVenuesList] = useState<Theater[]>(theaters);
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/theaters/venues")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Theater[] = data.map((v: any, index: number) => ({
+            id: v.id,
+            name: v.name,
+            address: v.address,
+            city: v.address?.includes("Phnom Penh") ? "Phnom Penh" : "Downtown Area",
+            distance: `${(1.8 + index * 2.1).toFixed(1)} mi`,
+            distanceValue: 1.8 + index * 2.1,
+            image: v.imageUrl || "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600&h=300&fit=crop",
+            tags: ["IMAX", "DOLBY_ATMOS", "GOLD_CLASS"],
+            x: 40 + (index * 18) % 50,
+            y: 35 + (index * 22) % 50,
+          }));
+          setVenuesList(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
-    return theaters
+    return venuesList
       .filter((t) =>
         activeFilter === "all" ? true : t.tags.includes(activeFilter as any)
       )
@@ -40,10 +64,10 @@ export default function Theaters() {
               .includes(query.toLowerCase())
       )
       .sort((a, b) => a.distanceValue - b.distanceValue);
-  }, [query, activeFilter]);
+  }, [venuesList, query, activeFilter]);
 
-  const closest = filtered[0];
-  const selected = theaters.find((t) => t.id === selectedId) ?? closest;
+  const closest = filtered[0] || venuesList[0];
+  const selected = venuesList.find((t) => t.id === selectedId) ?? closest;
 
   return (
     <>

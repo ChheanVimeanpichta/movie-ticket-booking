@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation, Link, useNavigate } from "react-router-dom";
 import { MapPin, Clock, ArrowLeft } from "lucide-react";
 import Header from "@/components/Header";
@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { nowShowing, nowShowingGrid } from "@/data/movies";
 import type { Movie } from "@/data/movies";
 import type { GridMovie } from "@/data/movies";
+import { useMovies } from "@/context/MovieContext";
 
 type MovieData = (Movie | GridMovie) & { synopsis?: string; rating?: string; runtime?: string; landscape?: string };
 
@@ -35,6 +36,7 @@ const SERVICE_FEE_RATE = 0.078;
 export default function SeatSelectionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { getMovieById } = useMovies();
   const locationState = useLocation().state as {
     date?: string;
     cinema?: string;
@@ -43,10 +45,37 @@ export default function SeatSelectionPage() {
   } | null;
 
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [occupiedSeats, setOccupiedSeats] = useState<Set<string>>(generateReserved());
 
   const movie: MovieData | undefined =
+    (id ? (getMovieById(id) as MovieData) : undefined) ||
     nowShowing.find((m) => m.id === id) ||
     nowShowingGrid.find((m) => m.id === id);
+
+  const formatLabel = locationState?.format || "IMAX 2D";
+  const timeLabel = locationState?.time || "8:30 PM";
+  const cinemaLabel = locationState?.cinema || "Hall 4, IMAX";
+  const dateLabel = locationState?.date || "Today";
+
+  useEffect(() => {
+    if (movie?.title) {
+      const params = new URLSearchParams();
+      params.set("movieTitle", movie.title);
+      if (dateLabel) params.set("screeningDate", dateLabel);
+      if (timeLabel) params.set("screeningTime", timeLabel);
+
+      fetch(`http://localhost:5000/api/bookings/occupied-seats?${params.toString()}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.occupiedSeats && Array.isArray(data.occupiedSeats)) {
+            const merged = new Set(generateReserved());
+            data.occupiedSeats.forEach((s: string) => merged.add(s.toUpperCase().trim()));
+            setOccupiedSeats(merged);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [movie?.title, dateLabel, timeLabel]);
 
   if (!movie) {
     return (
@@ -61,6 +90,7 @@ export default function SeatSelectionPage() {
   }
 
   function toggleSeat(seatId: string) {
+    if (occupiedSeats.has(seatId.toUpperCase())) return;
     setSelectedSeats((prev) =>
       prev.includes(seatId)
         ? prev.filter((s) => s !== seatId)
@@ -72,11 +102,6 @@ export default function SeatSelectionPage() {
   const subtotal = ticketCount * SEAT_PRICE;
   const serviceFee = subtotal * SERVICE_FEE_RATE;
   const total = subtotal + serviceFee;
-
-  const formatLabel = locationState?.format || "IMAX 2D";
-  const timeLabel = locationState?.time || "8:30 PM";
-  const cinemaLabel = locationState?.cinema || "Hall 4, IMAX";
-  const dateLabel = locationState?.date || "Today";
 
   return (
     <div className="min-h-screen bg-cine-bg">
@@ -142,7 +167,7 @@ export default function SeatSelectionPage() {
                           {gi > 0 && <span className="w-3" />}
                           {group.seats.map((seatNum) => {
                             const seatId = `${row}${seatNum}`;
-                            const isReserved = RESERVED.has(seatId);
+                            const isReserved = occupiedSeats.has(seatId.toUpperCase());
                             const isSelected = selectedSeats.includes(seatId);
                             return (
                               <button

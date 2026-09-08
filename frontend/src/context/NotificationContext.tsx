@@ -43,7 +43,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   bookingHistory: BookingHistoryItem[];
   addToBookingHistory: (
-    item: Omit<BookingHistoryItem, "id" | "bookedAt">
+    item: Omit<BookingHistoryItem, "id" | "bookedAt"> & { id?: string; bookedAt?: string }
   ) => void;
   reminders: ReleaseReminder[];
   addReminder: (reminder: ReleaseReminder) => void;
@@ -167,11 +167,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const addToBookingHistory = (
-    item: Omit<BookingHistoryItem, "id" | "bookedAt">
+    item: Omit<BookingHistoryItem, "id" | "bookedAt"> & { id?: string; bookedAt?: string }
   ) => {
     const newBooking: BookingHistoryItem = {
-      id: Date.now().toString(),
-      bookedAt: "Just now",
+      id: item.id || Date.now().toString(),
+      bookedAt: item.bookedAt || "Just now",
       ...item,
     };
     setBookingHistory((prev) => [newBooking, ...prev]);

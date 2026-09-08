@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Settings,
@@ -18,6 +18,7 @@ import Footer from "@/components/Footer";
 import { useNotifications } from "@/context/NotificationContext";
 import { useProfile, type Profile } from "@/context/ProfileContext";
 import { useAuth } from "@/context/AuthContext";
+import { useMovies } from "@/context/MovieContext";
 
 const PAYMENT_METHODS = [
   {
@@ -188,6 +189,33 @@ export default function ProfilePage() {
     reader.readAsDataURL(file);
   }
 
+  const { movies: allMovies } = useMovies();
+  const [dbBookings, setDbBookings] = useState<any[]>([]);
+
+  useEffect(() => {
+    const emailOrId = user?.email || profile.email || user?.id;
+    if (!emailOrId) return;
+
+    let isMounted = true;
+    fetch(`http://localhost:5000/api/bookings/customer/${encodeURIComponent(emailOrId)}`)
+      .then((res) => {
+        if (!res.ok) return [];
+        return res.json();
+      })
+      .then((data) => {
+        if (isMounted && Array.isArray(data)) {
+          setDbBookings(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch remote customer bookings:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.email, user?.id, profile.email]);
+
   const accountRows = [
     { label: "Edit Profile", icon: User, onClick: openEditProfile },
     { label: "Payment Methods", icon: CreditCard, onClick: () => setShowPaymentMethods(true) },
@@ -202,19 +230,88 @@ export default function ProfilePage() {
     },
   ];
 
-  const activeBookings = bookingHistory.map((b) => ({
-    id: b.id,
-    title: b.movieTitle,
-    poster: b.poster || "https://picsum.photos/seed/poster/400/600",
-    badge: "CONFIRMED",
-    badgeOutlined: false,
-    date: b.date,
-    time: b.time,
-    cinema: b.cinema,
-    seats: b.seats.length > 0 ? b.seats : ["—"],
-  }));
+  const combinedBookings = useMemo(() => {
+    const map = new Map<string, any>();
 
-  const totalBookings = bookingHistory.length > 0 ? bookingHistory.length : 0;
+    // 1. Add DB bookings
+    for (const b of dbBookings) {
+      const cleanId = String(b.id || "").replace(/^#/, "");
+      if (!cleanId) continue;
+      map.set(cleanId, {
+        id: cleanId,
+        movieTitle: b.movieTitle || "Movie",
+        poster: b.poster || "",
+        cinema: b.cinema || "CineStar Luxury Cinema",
+        date: b.date || "Today",
+        time: b.time || "Showtime",
+        seats: Array.isArray(b.seats) ? b.seats : [],
+        ticketCount: b.ticketCount || (Array.isArray(b.seats) ? b.seats.length : 1),
+        total: b.total || 0,
+        status: b.status || "confirmed",
+      });
+    }
+
+    // 2. Merge local bookingHistory
+    for (const b of bookingHistory) {
+      const cleanId = String(b.id || "").replace(/^#/, "");
+      if (!cleanId) continue;
+      const existing = map.get(cleanId);
+      if (existing) {
+        map.set(cleanId, {
+          ...existing,
+          poster: b.poster || existing.poster,
+          cinema: b.cinema || existing.cinema,
+        });
+      } else {
+        map.set(cleanId, {
+          id: cleanId,
+          movieTitle: b.movieTitle,
+          poster: b.poster || "",
+          cinema: b.cinema || "CineStar Luxury Cinema",
+          date: b.date,
+          time: b.time,
+          seats: b.seats || [],
+          ticketCount: b.ticketCount || (b.seats ? b.seats.length : 1),
+          total: b.total,
+          status: "confirmed",
+        });
+      }
+    }
+
+    return Array.from(map.values());
+  }, [dbBookings, bookingHistory]);
+
+  const activeBookings = useMemo(() => {
+    return combinedBookings.map((b) => {
+      let resolvedPoster = b.poster;
+      if (!resolvedPoster) {
+        const match = allMovies.find(
+          (m) => m.title.toLowerCase() === b.movieTitle.toLowerCase()
+        );
+        resolvedPoster = match?.poster || "https://picsum.photos/seed/poster/400/600";
+      }
+
+      return {
+        id: b.id,
+        title: b.movieTitle,
+        poster: resolvedPoster,
+        badge: (b.status || "CONFIRMED").toUpperCase(),
+        badgeOutlined: b.status === "cancelled",
+        date: b.date,
+        time: b.time,
+        cinema: b.cinema,
+        seats: b.seats.length > 0 ? b.seats : ["—"],
+      };
+    });
+  }, [combinedBookings, allMovies]);
+
+  const totalBookings = combinedBookings.length;
+
+  const activeTicketsCount = useMemo(() => {
+    return combinedBookings
+      .filter((b) => b.status !== "cancelled" && b.status !== "refunded")
+      .reduce((sum, b) => sum + (b.seats?.length || b.ticketCount || 1), 0);
+  }, [combinedBookings]);
 
   return (
     <div className="min-h-screen bg-cine-bg">
@@ -306,7 +403,7 @@ export default function ProfilePage() {
             </p>
           </div>
           <div className="rounded-xl border border-cine-border bg-cine-card p-5">
-            <p className="font-display text-3xl font-black text-cine-white">2</p>
+            <p className="font-display text-3xl font-black text-cine-white">{activeTicketsCount}</p>
             <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-cine-text">
               Active Tickets
             </p>

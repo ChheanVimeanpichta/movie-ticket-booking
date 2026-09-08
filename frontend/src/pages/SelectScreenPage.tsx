@@ -7,6 +7,7 @@ import { nowShowing, nowShowingGrid } from "@/data/movies";
 import type { Movie } from "@/data/movies";
 import type { GridMovie } from "@/data/movies";
 import { useAuth } from "@/context/AuthContext";
+import { useMovies } from "@/context/MovieContext";
 
 type MovieData = (Movie | GridMovie) & { synopsis?: string; rating?: string; runtime?: string; landscape?: string };
 
@@ -135,16 +136,52 @@ const CINEMA_SESSIONS: Record<string, SessionCategory[]> = {
   ],
 };
 
+const DEFAULT_SESSIONS: SessionCategory[] = [
+  {
+    name: "IMAX 2D EXPERIENCE",
+    price: "$18.50 per ticket",
+    times: ["14:30", "17:00", "20:30", "23:00"],
+    soldOut: [],
+  },
+  {
+    name: "4DX IMMERSIVE",
+    price: "$22.00 per ticket",
+    times: ["12:00", "15:00", "17:30", "20:00"],
+    soldOut: [],
+  },
+  {
+    name: "STANDARD DIGITAL",
+    price: "$14.00 per ticket",
+    times: ["11:00", "13:30", "16:00", "18:30", "21:00"],
+    soldOut: [],
+  },
+];
+
 export default function SelectScreenPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, openLoginPopup } = useAuth();
+  const { getMovieById } = useMovies();
   const [selectedDate, setSelectedDate] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(0);
   const [selectedTime, setSelectedTime] = useState<string | null>("17:00");
+  const [cinemas, setCinemas] = useState<string[]>(CINEMA_OPTIONS);
   const [selectedCinema, setSelectedCinema] = useState(CINEMA_OPTIONS[0]);
   const [cinemaOpen, setCinemaOpen] = useState(false);
   const cinemaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/theaters/venues")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = data.map((v: any) => v.name + (v.address ? `, ${v.address.split(",")[0]}` : ""));
+          setCinemas(names);
+          setSelectedCinema((prev) => (names.includes(prev) ? prev : names[0]));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -157,6 +194,7 @@ export default function SelectScreenPage() {
   }, []);
 
   const movie: MovieData | undefined =
+    (id ? (getMovieById(id) as MovieData) : undefined) ||
     nowShowing.find((m) => m.id === id) ||
     nowShowingGrid.find((m) => m.id === id);
 
@@ -182,8 +220,8 @@ export default function SelectScreenPage() {
 
   const hasRating = "rating" in movie && movie.rating;
   const hasRuntime = "runtime" in movie && movie.runtime;
-  const cinemaSessions = CINEMA_SESSIONS[selectedCinema] || CINEMA_SESSIONS[CINEMA_OPTIONS[0]];
-  const category = cinemaSessions[selectedCategory] || cinemaSessions[0];
+  const cinemaSessions = CINEMA_SESSIONS[selectedCinema] || DEFAULT_SESSIONS;
+  const category = cinemaSessions[selectedCategory] || cinemaSessions[0] || DEFAULT_SESSIONS[0];
 
   return (
     <div className="min-h-screen bg-cine-bg">
@@ -318,12 +356,12 @@ export default function SelectScreenPage() {
                     />
                   </button>
                   {cinemaOpen && (
-                    <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-cine-border bg-cine-card shadow-xl">
-                      {CINEMA_OPTIONS.map((opt) => (
+                    <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-cine-border bg-cine-card shadow-xl max-h-60 overflow-y-auto">
+                      {cinemas.map((opt) => (
                         <button
                           key={opt}
                           onClick={() => {
-                            const newSessions = CINEMA_SESSIONS[opt];
+                            const newSessions = CINEMA_SESSIONS[opt] || DEFAULT_SESSIONS;
                             const firstAvail = newSessions?.[0]?.times?.find(
                               (t) => !newSessions[0]?.soldOut?.includes(t)
                             );

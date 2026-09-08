@@ -18,6 +18,7 @@ import type { Movie } from "@/data/movies";
 import type { GridMovie } from "@/data/movies";
 import { useNotifications } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
+import { useMovies } from "@/context/MovieContext";
 
 type MovieData = (Movie | GridMovie) & {
   synopsis?: string;
@@ -86,10 +87,14 @@ export default function CheckoutPage() {
   const [selectedMethod, setSelectedMethod] =
     useState<(typeof PAYMENT_METHODS)[number] | null>(null);
   const [paid, setPaid] = useState(false);
+  const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { addNotification, addToBookingHistory } = useNotifications();
   const { user } = useAuth();
+  const { getMovieById } = useMovies();
 
   useEffect(() => {
     if (!proofFile) {
@@ -111,6 +116,7 @@ export default function CheckoutPage() {
   }, []);
 
   const movie: MovieData | undefined =
+    getMovieById(id || "") ||
     nowShowing.find((m) => m.id === id) ||
     nowShowingGrid.find((m) => m.id === id);
 
@@ -163,7 +169,7 @@ export default function CheckoutPage() {
 
   if (paid) {
     return (
-      <div className="relative flex min-h-screen flex-col items-center justify-center bg-cine-bg px-4">
+      <div className="relative flex min-h-screen flex-col items-center justify-center bg-cine-bg px-4 py-12 text-center">
         <Link
           to="/"
           aria-label="Close and go home"
@@ -177,15 +183,38 @@ export default function CheckoutPage() {
         <h1 className="mt-8 font-display text-3xl font-black tracking-tight text-cine-white [text-shadow:0_0_18px_rgba(228,22,42,0.6)] md:text-4xl">
           Payment Successful!
         </h1>
-        <p className="mt-3 text-sm text-cine-text">
-          Your tickets have been sent to your email.
+        <p className="mt-3 max-w-md text-sm text-cine-text">
+          Your ticket reservation has been confirmed and registered to your active profile account.
         </p>
-        <Link
-          to="/"
-          className="mt-8 rounded-full border border-cine-border bg-cine-card px-8 py-3 text-sm font-bold text-cine-white transition-colors hover:border-cine-red hover:bg-cine-card-hover"
-        >
-          Back to Home~
-        </Link>
+
+        {confirmedBookingId && (
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-cine-red/30 bg-cine-red/10 px-4 py-1 text-xs font-mono font-bold text-cine-red">
+            <span>Booking #{confirmedBookingId.replace(/^#/, '')}</span>
+          </p>
+        )}
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          {confirmedBookingId && (
+            <Link
+              to={`/ticket/${confirmedBookingId}`}
+              className="rounded-full bg-cine-red px-8 py-3 text-sm font-bold text-white shadow-[0_0_24px_rgba(228,22,42,0.4)] transition-all hover:bg-cine-red/90"
+            >
+              View My Ticket
+            </Link>
+          )}
+          <Link
+            to="/profile"
+            className="rounded-full border border-cine-border bg-cine-card px-8 py-3 text-sm font-bold text-cine-white transition-colors hover:border-cine-red hover:bg-cine-card-hover"
+          >
+            Go to Profile
+          </Link>
+          <Link
+            to="/"
+            className="rounded-full border border-transparent px-5 py-3 text-sm font-semibold text-cine-text transition-colors hover:text-cine-white"
+          >
+            Back to Home
+          </Link>
+        </div>
       </div>
     );
   }
@@ -328,9 +357,26 @@ export default function CheckoutPage() {
               Have a promo code or gift card?
             </button>
 
+            {conflictError && (
+              <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
+                <p className="font-bold">Booking Conflict:</p>
+                <p className="mt-1">{conflictError}</p>
+                <Link
+                  to={`/select-seat/${id}`}
+                  className="mt-2 inline-block font-semibold text-cine-red underline"
+                >
+                  Return to seat selection
+                </Link>
+              </div>
+            )}
+
             <button
-              disabled={!proofSubmitted}
+              disabled={!proofSubmitted || isSubmitting}
               onClick={async () => {
+                if (isSubmitting) return;
+                setIsSubmitting(true);
+                setConflictError(null);
+
                 const bookingPayload = {
                   userId: user?.id || (user as any)?.email || "cust-guest",
                   customerName: user?.name || (user as any)?.email || "Customer",
@@ -344,17 +390,39 @@ export default function CheckoutPage() {
                   status: "confirmed",
                 };
 
+                let createdBookingId = `BK-${Date.now().toString().slice(-6)}`;
+
                 try {
-                  await fetch("http://localhost:5000/api/bookings", {
+                  const res = await fetch("http://localhost:5000/api/bookings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(bookingPayload),
                   });
+
+                  if (res.status === 409) {
+                    const errData = await res.json().catch(() => ({}));
+                    const conflictMsg =
+                      errData.message ||
+                      "Selected seat(s) were just booked by another customer. Please select different seats.";
+                    setConflictError(conflictMsg);
+                    setIsSubmitting(false);
+                    return;
+                  }
+
+                  if (res.ok) {
+                    const savedData = await res.json().catch(() => ({}));
+                    if (savedData?.id) {
+                      createdBookingId = savedData.id;
+                    }
+                  }
                 } catch (err) {
                   console.warn("Failed to persist booking to MySQL backend:", err);
                 }
 
+                setConfirmedBookingId(createdBookingId);
                 setPaid(true);
+                setIsSubmitting(false);
+
                 addNotification({
                   title: "Booking Confirmed",
                   description: `Your tickets for ${movie.title} (${formatLabel}) have been confirmed. Seats: ${
@@ -365,6 +433,7 @@ export default function CheckoutPage() {
                   iconType: "ticket",
                 });
                 addToBookingHistory({
+                  id: createdBookingId,
                   movieTitle: movie.title,
                   poster: movie.poster,
                   cinema: cinemaLabel,
@@ -376,13 +445,24 @@ export default function CheckoutPage() {
                 });
               }}
               className={`mt-5 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white transition-all ${
-                proofSubmitted
+                proofSubmitted && !isSubmitting
                   ? "bg-gradient-to-b from-[#E4162A] to-[#9C0F1F] shadow-[0_0_24px_rgba(228,22,42,0.45)] hover:shadow-[0_0_32px_rgba(228,22,42,0.6)]"
                   : "cursor-not-allowed bg-cine-red/40"
               }`}
             >
-              {proofSubmitted ? <Wallet size={15} /> : <Lock size={15} />}
-              {proofSubmitted ? "Process to Payment" : "Select a Payment Method Above"}
+              {isSubmitting ? (
+                <span>Processing Payment...</span>
+              ) : proofSubmitted ? (
+                <>
+                  <Wallet size={15} />
+                  <span>Process to Payment</span>
+                </>
+              ) : (
+                <>
+                  <Lock size={15} />
+                  <span>Select a Payment Method Above</span>
+                </>
+              )}
             </button>
 
             <p className="mt-3 text-center text-[10px] text-cine-text/70">

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,6 +13,8 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useNotifications } from "@/context/NotificationContext";
+import { useMovies } from "@/context/MovieContext";
+import { nowShowing, nowShowingGrid } from "@/data/movies";
 
 const SAMPLE_BOOKINGS = [
   {
@@ -46,9 +49,70 @@ export default function TicketPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { bookingHistory } = useNotifications();
+  const { movies: allMovies } = useMovies();
 
-  const realBooking = bookingHistory.find((b) => b.id === id);
+  const [dbBooking, setDbBooking] = useState<any | null>(null);
+  const [loadingDb, setLoadingDb] = useState(false);
+
+  const cleanId = (id || "").replace(/^#/, "");
+  const realBooking = bookingHistory.find(
+    (b) => b.id === id || b.id.replace(/^#/, "") === cleanId
+  );
   const sampleBooking = SAMPLE_BOOKINGS.find((b) => b.id === id);
+
+  useEffect(() => {
+    if (realBooking || sampleBooking || !cleanId) return;
+
+    let isMounted = true;
+    setLoadingDb(true);
+
+    fetch(`http://localhost:5000/api/bookings/${encodeURIComponent(cleanId)}`)
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (isMounted && data) {
+          setDbBooking(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch remote ticket:", err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingDb(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [cleanId, realBooking, sampleBooking]);
+
+  let parsedDbSeats: string[] = [];
+  if (dbBooking?.seats) {
+    if (Array.isArray(dbBooking.seats)) {
+      parsedDbSeats = dbBooking.seats;
+    } else {
+      try {
+        parsedDbSeats = JSON.parse(dbBooking.seats);
+      } catch {
+        parsedDbSeats = String(dbBooking.seats)
+          .split(",")
+          .map((s: string) => s.trim());
+      }
+    }
+  }
+
+  let dbPoster = "https://picsum.photos/seed/poster/400/600";
+  if (dbBooking?.movieTitle) {
+    const movieMatch =
+      allMovies.find((m) => m.title.toLowerCase() === dbBooking.movieTitle.toLowerCase()) ||
+      nowShowing.find((m) => m.title.toLowerCase() === dbBooking.movieTitle.toLowerCase()) ||
+      nowShowingGrid.find((m) => m.title.toLowerCase() === dbBooking.movieTitle.toLowerCase());
+    if (movieMatch?.poster) {
+      dbPoster = movieMatch.poster;
+    }
+  }
 
   const booking = realBooking
     ? {
@@ -64,7 +128,40 @@ export default function TicketPage() {
         ticketCount: realBooking.ticketCount,
         total: realBooking.total,
       }
+    : dbBooking
+    ? {
+        id: dbBooking.id,
+        title: dbBooking.movieTitle,
+        poster: dbPoster,
+        badge: (dbBooking.status || "CONFIRMED").toUpperCase(),
+        badgeOutlined: dbBooking.status === "cancelled",
+        date:
+          dbBooking.screeningDate ||
+          new Date(dbBooking.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
+        time: dbBooking.screeningTime || "Standard Time",
+        cinema: dbBooking.screeningId ? `Screen ${dbBooking.screeningId}` : "CineStar Luxury Cinema",
+        seats: parsedDbSeats.length > 0 ? parsedDbSeats : ["—"],
+        ticketCount: parsedDbSeats.length || 1,
+        total: dbBooking.totalPrice || 0,
+      }
     : sampleBooking;
+
+  if (loadingDb) {
+    return (
+      <div className="min-h-screen bg-cine-bg">
+        <Header />
+        <main className="mx-auto max-w-7xl px-4 py-24 text-center sm:px-6 lg:px-8">
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-cine-red border-t-transparent" />
+          <h1 className="mt-4 text-xl font-bold text-cine-white">Retrieving Ticket Details...</h1>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!booking) {
     return (
@@ -94,7 +191,7 @@ export default function TicketPage() {
   const qrData = `CineStar|${booking.title}|${booking.cinema}|${booking.date}|${booking.time}|${booking.seats.join("+")}`;
   const barcode = booking.id
     .split("")
-    .map((c) => c.charCodeAt(0) % 4 + 2)
+    .map((c: string) => (c.charCodeAt(0) % 4) + 2)
     .join("");
 
   return (
@@ -231,7 +328,7 @@ export default function TicketPage() {
             {/* Barcode strip */}
             <div className="border-t border-cine-border px-5 pb-5 pt-4 sm:px-6 print:border-gray-300">
               <div className="flex items-center justify-center gap-[3px]">
-                {barcode.split("").map((n, i) => (
+                {barcode.split("").map((n: string, i: number) => (
                   <span
                     key={i}
                     style={{ width: `${n}px` }}
