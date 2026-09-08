@@ -170,18 +170,6 @@ export default function SelectScreenPage() {
   const [cinemaOpen, setCinemaOpen] = useState(false);
   const cinemaRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch("http://localhost:5000/api/theaters/venues")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          const names = data.map((v: any) => v.name + (v.address ? `, ${v.address.split(",")[0]}` : ""));
-          setCinemas(names);
-          setSelectedCinema((prev) => (names.includes(prev) ? prev : names[0]));
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

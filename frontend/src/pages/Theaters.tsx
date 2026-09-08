@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
@@ -24,28 +24,73 @@ import {
 
 const iconMap = { Clapperboard, Vibrate, Wine };
 
-export interface DynamicTheater extends Theater {
-  hallCount?: number;
+export interface VenueHall {
+  id: string;
+  venueId?: string;
+  name: string;
+  screenType: string;
+  soundSystem?: string;
   capacity?: number;
   status?: string;
-  formats?: string[];
 }
 
+export interface DetailedTheater extends Theater {
+  formats?: string[];
+  hallCount?: number;
+  capacity?: number;
+  halls?: VenueHall[];
+  status?: string;
+}
+
+const DEFAULT_COORDS: Record<string, { x: number; y: number }> = {
+  "v-001": { x: 38, y: 34 },
+  "v-002": { x: 70, y: 38 },
+  "v-003": { x: 28, y: 64 },
+  "v-1788767915971": { x: 62, y: 66 },
+};
+
+const DEFAULT_DETAILED_THEATERS: DetailedTheater[] = theaters.map((t, idx) => ({
+  ...t,
+  hallCount: idx === 0 ? 4 : idx === 1 ? 2 : 3,
+  capacity: idx === 0 ? 560 : idx === 1 ? 240 : 340,
+  formats: idx === 0 ? ["STANDARD", "IMAX", "4DX"] : idx === 1 ? ["DOLBY"] : ["IMAX", "4DX"],
+  halls:
+    idx === 0
+      ? [
+          { id: "h1", name: "Hall 1 - Standard", screenType: "STANDARD", capacity: 120 },
+          { id: "h2", name: "Hall 2 - Standard", screenType: "STANDARD", capacity: 140 },
+          { id: "h3", name: "Hall 3 - IMAX", screenType: "IMAX", capacity: 180 },
+          { id: "h4", name: "Hall 4 - 4DX", screenType: "4DX", capacity: 120 },
+        ]
+      : idx === 1
+      ? [
+          { id: "h5", name: "Hall 5 - VIP Lounge", screenType: "DOLBY", capacity: 100 },
+          { id: "h6", name: "Hall 6 - Dolby Atmos", screenType: "DOLBY", capacity: 140 },
+        ]
+      : [
+          { id: "h7", name: "Hall 7 - ScreenX", screenType: "STANDARD", capacity: 120 },
+          { id: "h8", name: "Hall 8 - Laser 2D", screenType: "2D", capacity: 100 },
+          { id: "h9", name: "Hall 9 - IMAX", screenType: "IMAX", capacity: 120 },
+        ],
+  status: "Active",
+}));
+
 export default function Theaters() {
-  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [venuesList, setVenuesList] = useState<DynamicTheater[]>(theaters);
+  const [venuesList, setVenuesList] = useState<DetailedTheater[]>(DEFAULT_DETAILED_THEATERS);
+  const [mapZoom, setMapZoom] = useState(1);
 
   const loadVenues = () => {
     fetch("http://localhost:5000/api/theaters/venues")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          const mapped: DynamicTheater[] = data.map((v: any, index: number) => {
+          const mapped: DetailedTheater[] = data.map((v: any, index: number) => {
             const parts = (v.address || "").split(",").map((s: string) => s.trim()).filter(Boolean);
-            const city = parts.length > 1 ? parts[parts.length - 1] : (v.address || "Phnom Penh");
+            const city = parts.length > 1 ? parts[parts.length - 1] : "Phnom Penh";
+            const address = parts.length > 1 ? parts.slice(0, -1).join(", ") : (v.address || "Phnom Penh");
 
             const venueFormats: string[] = Array.isArray(v.formats) && v.formats.length > 0
               ? v.formats
@@ -65,25 +110,41 @@ export default function Theaters() {
                   ])
                 );
 
+            const coord = DEFAULT_COORDS[v.id] || {
+              x: 25 + ((index * 27) % 55),
+              y: 25 + ((index * 31) % 55),
+            };
+
+            const hallCount =
+              typeof v.hallCount === "number"
+                ? v.hallCount
+                : Array.isArray(v.halls)
+                ? v.halls.length
+                : 0;
+
+            const capacity =
+              typeof v.capacity === "number"
+                ? v.capacity
+                : Array.isArray(v.halls)
+                ? v.halls.reduce((acc: number, h: any) => acc + (h.capacity || 0), 0)
+                : 0;
+
             return {
               id: v.id,
               name: v.name,
-              address: v.address || "Phnom Penh",
+              address,
               city,
-              distance: `${(1.2 + index * 1.5).toFixed(1)} mi`,
-              distanceValue: 1.2 + index * 1.5,
+              distance: `${(1.8 + index * 2.1).toFixed(1)} mi`,
+              distanceValue: 1.8 + index * 2.1,
               image: v.imageUrl || "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600&h=300&fit=crop",
               tags: venueTags,
-              x: 25 + ((index * 23) % 55),
-              y: 25 + ((index * 29) % 55),
-              hallCount: v.hallCount || (Array.isArray(v.halls) ? v.halls.length : 0),
-              capacity:
-                v.capacity ||
-                (Array.isArray(v.halls)
-                  ? v.halls.reduce((sum: number, h: any) => sum + (h.capacity || 0), 0)
-                  : 0),
-              status: v.status || "Active",
               formats: venueFormats,
+              hallCount,
+              capacity,
+              halls: Array.isArray(v.halls) ? v.halls : [],
+              status: v.status || "Active",
+              x: coord.x,
+              y: coord.y,
             };
           });
           setVenuesList(mapped);
@@ -95,7 +156,7 @@ export default function Theaters() {
   useEffect(() => {
     loadVenues();
 
-    // Live polling every 3 seconds to immediately sync new/edited theaters from Admin
+    // Poll every 3 seconds so data dynamically tracks changes made in Admin
     const interval = setInterval(loadVenues, 3000);
     const handleFocus = () => loadVenues();
     window.addEventListener("focus", handleFocus);
@@ -120,7 +181,7 @@ export default function Theaters() {
       .filter((t) =>
         query.trim() === ""
           ? true
-          : `${t.name} ${t.city} ${t.address} ${(t.formats || []).join(" ")}`
+          : `${t.name} ${t.city} ${t.address} ${(t.halls || []).map((h) => h.name).join(" ")}`
               .toLowerCase()
               .includes(query.toLowerCase())
       )
@@ -149,7 +210,7 @@ export default function Theaters() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by city, name, or zip code..."
+                placeholder="Search by city, theater name, or hall..."
                 className="w-full bg-cine-card border border-cine-border rounded-lg py-3 pl-11 pr-4 text-sm font-body text-cine-white placeholder:text-cine-text focus:outline-none focus:ring-1 focus:ring-cine-red/60"
               />
             </div>
@@ -178,56 +239,83 @@ export default function Theaters() {
             })}
           </div>
 
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-6">
-            <div className="flex flex-col gap-5 max-h-[720px] overflow-y-auto pr-1">
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-[1.05fr_1.15fr] gap-6">
+            {/* Left Column: Theater Cards with full Hall details */}
+            <div className="flex flex-col gap-5 max-h-[760px] overflow-y-auto pr-1">
               {filtered.map((t) => (
                 <TheaterCard
                   key={t.id}
                   theater={t}
                   active={selected?.id === t.id}
                   onSelect={() => setSelectedId(t.id)}
-                  onBook={() => navigate(`/movies?cinema=${encodeURIComponent(t.name)}`)}
                 />
               ))}
               {filtered.length === 0 && (
-                <div className="text-center py-16 px-4 rounded-xl border border-cine-border bg-cine-card">
-                  <Film className="mx-auto h-8 w-8 text-cine-text mb-3 opacity-50" />
-                  <p className="text-cine-white font-bold text-base font-display">No theaters found</p>
-                  <p className="text-cine-text text-xs font-body mt-1">
-                    No locations match "{query}". Try clearing filters or searching another keyword.
-                  </p>
-                </div>
+                <p className="text-cine-text text-sm font-body py-10 text-center">
+                  No theaters match your search. Try another query or filter.
+                </p>
               )}
             </div>
 
-            <div className="relative rounded-xl overflow-hidden border border-cine-border min-h-[500px] lg:sticky lg:top-6 bg-[#eceae6]">
-              <MapRoads />
+            {/* Right Column: Interactive Map with Theater Name & Hall Badges */}
+            <div className="relative rounded-xl overflow-hidden border border-cine-border min-h-[520px] lg:sticky lg:top-6 bg-[#eceae6]">
+              <div
+                className="absolute inset-0 transition-transform duration-300 origin-center"
+                style={{ transform: `scale(${mapZoom})` }}
+              >
+                <MapRoads />
 
-              {filtered.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedId(t.id)}
-                  style={{ left: `${t.x}%`, top: `${t.y}%` }}
-                  title={`${t.name} (${t.address})`}
-                  className="absolute -translate-x-1/2 -translate-y-full group"
-                >
-                  <MapPin
-                    className={`h-8 w-8 drop-shadow-lg transition ${
-                      selected?.id === t.id
-                        ? "text-cine-red fill-cine-red/30 scale-125 z-10"
-                        : "text-cine-red/70 fill-cine-red/10 group-hover:scale-110"
-                    }`}
-                  />
-                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/90 text-white text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap border border-white/20 pointer-events-none shadow-lg z-20">
-                    {t.name}
-                  </span>
-                </button>
-              ))}
+                {filtered.map((t) => {
+                  const isSelected = selected?.id === t.id;
+                  return (
+                    <div
+                      key={t.id}
+                      style={{ left: `${t.x}%`, top: `${t.y}%` }}
+                      className="absolute -translate-x-1/2 -translate-y-full flex flex-col items-center group cursor-pointer z-10 transition-transform duration-200"
+                      onClick={() => setSelectedId(t.id)}
+                    >
+                      {/* Name & Hall Badge visible at a glance */}
+                      <div
+                        className={`mb-1.5 px-2.5 py-1 rounded-lg backdrop-blur-md shadow-lg flex items-center gap-1.5 whitespace-nowrap transition-all duration-200 select-none ${
+                          isSelected
+                            ? "bg-[#141416] border-2 border-cine-red text-white scale-105 shadow-cine-red/30 ring-2 ring-cine-red/30 z-30"
+                            : "bg-[#141416]/90 border border-cine-border/80 text-cine-white hover:border-cine-red/60 group-hover:scale-105"
+                        }`}
+                      >
+                        <span className="text-xs font-bold font-display tracking-tight text-white">
+                          {t.name}
+                        </span>
+                        {t.hallCount !== undefined && t.hallCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-cine-red text-white shadow-sm">
+                            {t.hallCount} {t.hallCount === 1 ? "Hall" : "Halls"}
+                          </span>
+                        )}
+                      </div>
 
-              <div className="absolute top-4 right-4 flex flex-col gap-2">
+                      {/* Map Pin Icon */}
+                      <div className="relative flex items-center justify-center">
+                        <MapPin
+                          className={`h-8 w-8 drop-shadow-xl transition-all duration-200 ${
+                            isSelected
+                              ? "text-cine-red fill-cine-red scale-110 drop-shadow-[0_0_10px_rgba(228,22,42,0.8)]"
+                              : "text-cine-red fill-cine-red/70 group-hover:scale-110"
+                          }`}
+                        />
+                        {isSelected && (
+                          <span className="absolute -bottom-1 h-3 w-3 rounded-full bg-cine-red animate-ping opacity-75" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Map Zoom Controls */}
+              <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
                 <button
                   type="button"
                   title="Zoom in"
+                  onClick={() => setMapZoom((z) => Math.min(1.5, z + 0.15))}
                   className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border hover:border-cine-red transition"
                 >
                   <Plus className="h-4 w-4" />
@@ -235,52 +323,80 @@ export default function Theaters() {
                 <button
                   type="button"
                   title="Zoom out"
+                  onClick={() => setMapZoom((z) => Math.max(0.85, z - 0.15))}
                   className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border hover:border-cine-red transition"
                 >
                   <Minus className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  title="Center map"
+                  title="Reset view"
+                  onClick={() => setMapZoom(1)}
                   className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border hover:border-cine-red transition"
                 >
                   <LocateFixed className="h-4 w-4" />
                 </button>
               </div>
 
+              {/* Bottom Selected Theater Preview Bar */}
               {selected && (
-                <div className="absolute bottom-4 left-4 right-4 bg-cine-card/95 backdrop-blur rounded-xl border border-cine-border p-4 flex items-center justify-between gap-4 shadow-2xl">
+                <div className="absolute bottom-4 left-4 right-4 bg-cine-card/95 backdrop-blur-md rounded-xl border border-cine-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xl z-20">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-10 w-10 rounded-lg bg-cine-red flex items-center justify-center shrink-0 shadow-lg shadow-cine-red/20">
+                    <div className="h-10 w-10 rounded-lg bg-cine-red flex items-center justify-center shrink-0 shadow-lg shadow-cine-red/25">
                       <Navigation className="h-5 w-5 text-white" />
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-bold text-cine-white font-display truncate">
                           {selected.name}
                         </p>
-                        {selected.hallCount && (
-                          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/10 text-cine-text-light">
-                            {selected.hallCount} Halls
+                        {selected.hallCount !== undefined && selected.hallCount > 0 && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cine-red/20 text-cine-red border border-cine-red/30">
+                            {selected.hallCount} {selected.hallCount === 1 ? "Hall" : "Halls"}
                           </span>
                         )}
+                        {selected.capacity ? (
+                          <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-white/10 text-cine-text-light">
+                            {selected.capacity.toLocaleString()} Seats
+                          </span>
+                        ) : null}
                       </div>
                       <p className="text-xs text-cine-text font-body truncate mt-0.5">
-                        {selected.address || selected.city} • {selected.distance}
+                        {selected.address}, {selected.city} • {selected.distance}
                       </p>
+                      {selected.halls && selected.halls.length > 0 && (
+                        <p className="text-[11px] text-cine-text-light font-body truncate mt-1">
+                          <span className="text-cine-red font-semibold">Screens:</span>{" "}
+                          {selected.halls.map((h) => `${h.name} (${h.screenType})`).join(" • ")}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => navigate(`/movies?cinema=${encodeURIComponent(selected.name)}`)}
-                    className="text-xs font-bold uppercase tracking-wide font-display bg-cine-red hover:bg-cine-red/80 text-white px-4 py-2.5 rounded-lg transition shadow-md shadow-cine-red/20 shrink-0"
-                  >
-                    View Movies
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        `${selected.name} ${selected.address} ${selected.city}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold uppercase tracking-wide font-display text-cine-text hover:text-cine-white px-3.5 py-2.5 rounded-lg border border-cine-border hover:border-cine-text/40 transition flex items-center gap-1.5"
+                    >
+                      <Navigation className="h-3.5 w-3.5" />
+                      Get Directions
+                    </a>
+                    <Link
+                      to={`/movies?cinema=${encodeURIComponent(selected.name)}`}
+                      className="text-xs font-bold uppercase tracking-wide font-display bg-cine-red hover:bg-cine-red/90 text-white px-4 py-2.5 rounded-lg shadow-md shadow-cine-red/25 transition flex items-center gap-1.5"
+                    >
+                      View Movies
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
+          {/* World-Class Amenities Section */}
           <section className="mt-16">
             <p className="text-[10px] tracking-[0.2em] font-semibold text-cine-red font-body uppercase mb-6">
               World-Class Amenities
@@ -317,71 +433,170 @@ function TheaterCard({
   theater,
   active,
   onSelect,
-  onBook,
 }: {
-  theater: DynamicTheater;
+  theater: DetailedTheater;
   active: boolean;
   onSelect: () => void;
-  onBook?: () => void;
 }) {
+  const halls = theater.halls || [];
+  const hallCount = theater.hallCount ?? halls.length;
+
   return (
     <div
       onClick={onSelect}
-      className={`group text-left rounded-xl overflow-hidden border cursor-pointer transition-all ${
+      className={`group text-left rounded-xl overflow-hidden border cursor-pointer transition-all duration-200 ${
         active
-          ? "border-cine-red/70 shadow-[0_0_18px_rgba(228,22,42,0.25)] ring-1 ring-cine-red/40"
-          : "border-cine-border hover:border-cine-text/30"
+          ? "border-cine-red/80 bg-cine-card shadow-[0_0_20px_rgba(228,22,42,0.2)] ring-1 ring-cine-red/40"
+          : "border-cine-border bg-cine-card hover:border-cine-text/40 hover:bg-cine-card-hover"
       }`}
     >
-      <div className="relative h-44 w-full bg-black/40 overflow-hidden">
+      {/* Theater Image */}
+      <div className="relative h-44 w-full overflow-hidden bg-black/40">
         <img
           src={theater.image}
           alt={theater.name}
-          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
             (e.target as HTMLImageElement).src =
               "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600&h=300&fit=crop";
           }}
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+        {/* Top-Right Distance Badge */}
         <span className="absolute top-3 right-3 bg-cine-red text-white text-[11px] font-bold uppercase tracking-wide font-display px-2.5 py-0.5 rounded-md shadow-md">
           {theater.distance}
         </span>
-        {theater.hallCount !== undefined && theater.hallCount > 0 && (
-          <span className="absolute bottom-3 left-3 bg-black/80 backdrop-blur text-cine-white text-[10px] font-mono px-2 py-0.5 rounded border border-white/10">
-            {theater.hallCount} {theater.hallCount === 1 ? "Screen" : "Screens"}
-            {theater.capacity ? ` • ${theater.capacity.toLocaleString()} Seats` : ""}
+
+        {/* Top-Left Status Badge */}
+        <span className="absolute top-3 left-3 bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow">
+          {theater.status === "Maintenance" ? "Maintenance" : "Open"}
+        </span>
+
+        {/* Bottom Image Badges: Halls & Seats (visible when not hovered) */}
+        <div className="absolute bottom-2.5 left-3 flex items-center gap-1.5 flex-wrap">
+          <span className="bg-black/85 backdrop-blur-md text-cine-white text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-white/15 flex items-center gap-1">
+            <Film className="h-3 w-3 text-cine-red" />
+            {hallCount} {hallCount === 1 ? "Screen" : "Screens"}
           </span>
-        )}
-      </div>
-      <div className="bg-cine-card p-4 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-cine-white text-lg font-display group-hover:text-cine-red transition-colors">
-            {theater.name}
-          </h3>
-          {onBook && (
+          {theater.capacity ? (
+            <span className="bg-black/85 backdrop-blur-md text-cine-text-light text-[10px] font-mono px-2 py-0.5 rounded border border-white/15">
+              {theater.capacity.toLocaleString()} Seats
+            </span>
+          ) : null}
+        </div>
+
+        {/* Hover Overlay matching MovieCard flow */}
+        <div className="absolute inset-0 z-10 flex flex-col justify-between bg-gradient-to-t from-black/95 via-black/60 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-cine-pink">
+              Location
+            </p>
+            <span className="text-[10px] font-mono font-bold text-white bg-cine-red/90 px-2 py-0.5 rounded shadow">
+              {theater.distance}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-sm font-bold leading-tight text-white font-display">
+              {theater.name}
+            </p>
+            <p className="mt-1 text-xs text-cine-text-light flex items-start gap-1.5 font-body">
+              <MapPin size={13} className="text-cine-red shrink-0 mt-0.5" />
+              <span className="line-clamp-2">{theater.address}, {theater.city}</span>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                `${theater.name} ${theater.address} ${theater.city}`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded bg-cine-red px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-cine-red/80 shadow-md shadow-cine-red/20 font-display"
+            >
+              <Navigation size={12} />
+              Get Directions
+            </a>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onBook();
+                onSelect();
               }}
-              className="px-3 py-1 rounded bg-cine-red hover:bg-cine-red/80 text-white text-xs font-bold font-display uppercase tracking-wide transition shrink-0 shadow-sm"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/40 text-white/80 transition-colors hover:border-white hover:text-white shrink-0"
+              title="Locate on Map"
             >
-              Movies
+              <MapPin size={13} />
             </button>
-          )}
+          </div>
         </div>
-        <p className="text-xs text-cine-text font-body line-clamp-1 flex items-center gap-1">
-          <MapPin size={13} className="text-cine-red shrink-0" />
-          <span>{theater.address || theater.city}</span>
-        </p>
+      </div>
 
+      {/* Card Details */}
+      <div className="p-4 sm:p-5 space-y-3">
+        {/* Name & Quick Action */}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-cine-white text-lg font-display group-hover:text-cine-red transition-colors leading-tight">
+              {theater.name}
+            </h3>
+            <p className="text-xs text-cine-text font-body mt-1 flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-cine-red shrink-0" />
+              <span>{theater.address}, {theater.city}</span>
+            </p>
+          </div>
+          <Link
+            to={`/movies?cinema=${encodeURIComponent(theater.name)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs font-bold uppercase tracking-wide font-display bg-cine-red/15 hover:bg-cine-red text-cine-red hover:text-white px-3 py-1.5 rounded-lg border border-cine-red/30 transition shadow-sm shrink-0"
+          >
+            Movies
+          </Link>
+        </div>
+
+        {/* Halls and Screens Breakdown */}
+        {halls.length > 0 && (
+          <div className="pt-3 border-t border-cine-border/60">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-cine-text-light font-display flex items-center gap-1.5">
+                <Film className="h-3.5 w-3.5 text-cine-red" />
+                Halls & Experiences ({halls.length})
+              </span>
+              {theater.formats && theater.formats.length > 0 && (
+                <span className="text-[10px] font-mono font-semibold text-cine-red">
+                  {theater.formats.join(" • ")}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              {halls.map((hall) => (
+                <div
+                  key={hall.id || hall.name}
+                  className="px-2.5 py-1.5 rounded-lg bg-black/40 border border-cine-border/70 flex items-center justify-between text-[11px] font-body hover:border-cine-red/40 transition"
+                >
+                  <span className="font-medium text-cine-white truncate" title={hall.name}>
+                    {hall.name}
+                  </span>
+                  <span className="shrink-0 ml-1 px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-cine-red/20 text-cine-red border border-cine-red/30 uppercase">
+                    {hall.screenType || "2D"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tags */}
         {theater.tags && theater.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
+          <div className="pt-2 flex flex-wrap gap-1.5">
             {theater.tags.slice(0, 4).map((tag) => (
               <span
                 key={tag}
-                className="px-2 py-0.5 rounded text-[9px] font-mono font-bold tracking-wider uppercase bg-white/5 border border-white/10 text-cine-text-light"
+                className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-cine-text"
               >
                 {tag.replace(/_/g, " ")}
               </span>
