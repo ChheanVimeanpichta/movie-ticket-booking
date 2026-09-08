@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
@@ -18,48 +19,108 @@ import {
   Clapperboard,
   Vibrate,
   Wine,
+  Film,
 } from "lucide-react";
 
 const iconMap = { Clapperboard, Vibrate, Wine };
 
+export interface DynamicTheater extends Theater {
+  hallCount?: number;
+  capacity?: number;
+  status?: string;
+  formats?: string[];
+}
+
 export default function Theaters() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [venuesList, setVenuesList] = useState<Theater[]>(theaters);
+  const [venuesList, setVenuesList] = useState<DynamicTheater[]>(theaters);
 
-  useEffect(() => {
+  const loadVenues = () => {
     fetch("http://localhost:5000/api/theaters/venues")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          const mapped: Theater[] = data.map((v: any, index: number) => ({
-            id: v.id,
-            name: v.name,
-            address: v.address,
-            city: v.address?.includes("Phnom Penh") ? "Phnom Penh" : "Downtown Area",
-            distance: `${(1.8 + index * 2.1).toFixed(1)} mi`,
-            distanceValue: 1.8 + index * 2.1,
-            image: v.imageUrl || "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600&h=300&fit=crop",
-            tags: ["IMAX", "DOLBY_ATMOS", "GOLD_CLASS"],
-            x: 40 + (index * 18) % 50,
-            y: 35 + (index * 22) % 50,
-          }));
+          const mapped: DynamicTheater[] = data.map((v: any, index: number) => {
+            const parts = (v.address || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+            const city = parts.length > 1 ? parts[parts.length - 1] : (v.address || "Phnom Penh");
+
+            const venueFormats: string[] = Array.isArray(v.formats) && v.formats.length > 0
+              ? v.formats
+              : Array.isArray(v.halls)
+              ? (Array.from(new Set(v.halls.map((h: any) => h.screenType))).filter(Boolean) as string[])
+              : [];
+
+            const venueTags: string[] = Array.isArray(v.tags) && v.tags.length > 0
+              ? v.tags
+              : Array.from(
+                  new Set([
+                    ...venueFormats,
+                    ...(Array.isArray(v.halls) && v.halls.some((h: any) => h.soundSystem === "Dolby Atmos")
+                      ? ["DOLBY_ATMOS"]
+                      : []),
+                    "GOLD_CLASS",
+                  ])
+                );
+
+            return {
+              id: v.id,
+              name: v.name,
+              address: v.address || "Phnom Penh",
+              city,
+              distance: `${(1.2 + index * 1.5).toFixed(1)} mi`,
+              distanceValue: 1.2 + index * 1.5,
+              image: v.imageUrl || "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600&h=300&fit=crop",
+              tags: venueTags,
+              x: 25 + ((index * 23) % 55),
+              y: 25 + ((index * 29) % 55),
+              hallCount: v.hallCount || (Array.isArray(v.halls) ? v.halls.length : 0),
+              capacity:
+                v.capacity ||
+                (Array.isArray(v.halls)
+                  ? v.halls.reduce((sum: number, h: any) => sum + (h.capacity || 0), 0)
+                  : 0),
+              status: v.status || "Active",
+              formats: venueFormats,
+            };
+          });
           setVenuesList(mapped);
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadVenues();
+
+    // Live polling every 3 seconds to immediately sync new/edited theaters from Admin
+    const interval = setInterval(loadVenues, 3000);
+    const handleFocus = () => loadVenues();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   const filtered = useMemo(() => {
     return venuesList
-      .filter((t) =>
-        activeFilter === "all" ? true : t.tags.includes(activeFilter as any)
-      )
+      .filter((t) => {
+        if (activeFilter === "all") return true;
+        const normFilter = activeFilter.toUpperCase();
+        return t.tags.some(
+          (tag) =>
+            tag.toUpperCase() === normFilter ||
+            (normFilter === "DOLBY_ATMOS" && tag.toUpperCase().includes("DOLBY"))
+        );
+      })
       .filter((t) =>
         query.trim() === ""
           ? true
-          : `${t.name} ${t.city} ${t.address}`
+          : `${t.name} ${t.city} ${t.address} ${(t.formats || []).join(" ")}`
               .toLowerCase()
               .includes(query.toLowerCase())
       )
@@ -125,12 +186,17 @@ export default function Theaters() {
                   theater={t}
                   active={selected?.id === t.id}
                   onSelect={() => setSelectedId(t.id)}
+                  onBook={() => navigate(`/movies?cinema=${encodeURIComponent(t.name)}`)}
                 />
               ))}
               {filtered.length === 0 && (
-                <p className="text-cine-text text-sm font-body py-10 text-center">
-                  No theaters match your search. Try another city or filter.
-                </p>
+                <div className="text-center py-16 px-4 rounded-xl border border-cine-border bg-cine-card">
+                  <Film className="mx-auto h-8 w-8 text-cine-text mb-3 opacity-50" />
+                  <p className="text-cine-white font-bold text-base font-display">No theaters found</p>
+                  <p className="text-cine-text text-xs font-body mt-1">
+                    No locations match "{query}". Try clearing filters or searching another keyword.
+                  </p>
+                </div>
               )}
             </div>
 
@@ -142,47 +208,73 @@ export default function Theaters() {
                   key={t.id}
                   onClick={() => setSelectedId(t.id)}
                   style={{ left: `${t.x}%`, top: `${t.y}%` }}
+                  title={`${t.name} (${t.address})`}
                   className="absolute -translate-x-1/2 -translate-y-full group"
                 >
                   <MapPin
                     className={`h-8 w-8 drop-shadow-lg transition ${
                       selected?.id === t.id
-                        ? "text-cine-red fill-cine-red/30 scale-110"
-                        : "text-cine-red/70 fill-cine-red/10"
+                        ? "text-cine-red fill-cine-red/30 scale-125 z-10"
+                        : "text-cine-red/70 fill-cine-red/10 group-hover:scale-110"
                     }`}
                   />
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/90 text-white text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap border border-white/20 pointer-events-none shadow-lg z-20">
+                    {t.name}
+                  </span>
                 </button>
               ))}
 
               <div className="absolute top-4 right-4 flex flex-col gap-2">
-                <button className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border">
+                <button
+                  type="button"
+                  title="Zoom in"
+                  className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border hover:border-cine-red transition"
+                >
                   <Plus className="h-4 w-4" />
                 </button>
-                <button className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border">
+                <button
+                  type="button"
+                  title="Zoom out"
+                  className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border hover:border-cine-red transition"
+                >
                   <Minus className="h-4 w-4" />
                 </button>
-                <button className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border">
+                <button
+                  type="button"
+                  title="Center map"
+                  className="h-9 w-9 rounded-md bg-cine-card text-cine-white flex items-center justify-center border border-cine-border hover:border-cine-red transition"
+                >
                   <LocateFixed className="h-4 w-4" />
                 </button>
               </div>
 
-              {closest && (
-                <div className="absolute bottom-4 left-4 right-4 bg-cine-card/95 backdrop-blur rounded-lg border border-cine-border p-4 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-md bg-cine-red flex items-center justify-center shrink-0">
-                      <Navigation className="h-4 w-4 text-white" />
+              {selected && (
+                <div className="absolute bottom-4 left-4 right-4 bg-cine-card/95 backdrop-blur rounded-xl border border-cine-border p-4 flex items-center justify-between gap-4 shadow-2xl">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-lg bg-cine-red flex items-center justify-center shrink-0 shadow-lg shadow-cine-red/20">
+                      <Navigation className="h-5 w-5 text-white" />
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-cine-white font-display">
-                        {closest.name}
-                      </p>
-                      <p className="text-xs text-cine-text font-body">
-                        Closest to you • 12 min drive
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-cine-white font-display truncate">
+                          {selected.name}
+                        </p>
+                        {selected.hallCount && (
+                          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/10 text-cine-text-light">
+                            {selected.hallCount} Halls
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-cine-text font-body truncate mt-0.5">
+                        {selected.address || selected.city} • {selected.distance}
                       </p>
                     </div>
                   </div>
-                  <button className="text-xs font-bold uppercase tracking-wide font-display text-cine-red hover:text-cine-white transition shrink-0">
-                    Get Directions
+                  <button
+                    onClick={() => navigate(`/movies?cinema=${encodeURIComponent(selected.name)}`)}
+                    className="text-xs font-bold uppercase tracking-wide font-display bg-cine-red hover:bg-cine-red/80 text-white px-4 py-2.5 rounded-lg transition shadow-md shadow-cine-red/20 shrink-0"
+                  >
+                    View Movies
                   </button>
                 </div>
               )}
@@ -225,39 +317,79 @@ function TheaterCard({
   theater,
   active,
   onSelect,
+  onBook,
 }: {
-  theater: Theater;
+  theater: DynamicTheater;
   active: boolean;
   onSelect: () => void;
+  onBook?: () => void;
 }) {
   return (
-    <button
+    <div
       onClick={onSelect}
-      className={`group text-left rounded-xl overflow-hidden border transition ${
+      className={`group text-left rounded-xl overflow-hidden border cursor-pointer transition-all ${
         active
-          ? "border-cine-red/70 shadow-[0_0_16px_rgba(228,22,42,0.2)]"
+          ? "border-cine-red/70 shadow-[0_0_18px_rgba(228,22,42,0.25)] ring-1 ring-cine-red/40"
           : "border-cine-border hover:border-cine-text/30"
       }`}
     >
-      <div className="relative h-40 w-full">
+      <div className="relative h-44 w-full bg-black/40 overflow-hidden">
         <img
           src={theater.image}
           alt={theater.name}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src =
+              "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600&h=300&fit=crop";
+          }}
         />
-        <span className="absolute top-3 right-3 bg-cine-red text-white text-[11px] font-bold uppercase tracking-wide font-display px-2 py-0.5 rounded-md">
+        <span className="absolute top-3 right-3 bg-cine-red text-white text-[11px] font-bold uppercase tracking-wide font-display px-2.5 py-0.5 rounded-md shadow-md">
           {theater.distance}
         </span>
+        {theater.hallCount !== undefined && theater.hallCount > 0 && (
+          <span className="absolute bottom-3 left-3 bg-black/80 backdrop-blur text-cine-white text-[10px] font-mono px-2 py-0.5 rounded border border-white/10">
+            {theater.hallCount} {theater.hallCount === 1 ? "Screen" : "Screens"}
+            {theater.capacity ? ` • ${theater.capacity.toLocaleString()} Seats` : ""}
+          </span>
+        )}
       </div>
-      <div className="bg-cine-card p-4">
-        <h3 className="font-bold text-cine-white text-lg font-display">
-          {theater.name}
-        </h3>
-        <p className="text-sm text-cine-text font-body mt-0.5">
-          {theater.address}, {theater.city}
+      <div className="bg-cine-card p-4 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold text-cine-white text-lg font-display group-hover:text-cine-red transition-colors">
+            {theater.name}
+          </h3>
+          {onBook && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBook();
+              }}
+              className="px-3 py-1 rounded bg-cine-red hover:bg-cine-red/80 text-white text-xs font-bold font-display uppercase tracking-wide transition shrink-0 shadow-sm"
+            >
+              Movies
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-cine-text font-body line-clamp-1 flex items-center gap-1">
+          <MapPin size={13} className="text-cine-red shrink-0" />
+          <span>{theater.address || theater.city}</span>
         </p>
+
+        {theater.tags && theater.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {theater.tags.slice(0, 4).map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 rounded text-[9px] font-mono font-bold tracking-wider uppercase bg-white/5 border border-white/10 text-cine-text-light"
+              >
+                {tag.replace(/_/g, " ")}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
-    </button>
+    </div>
   );
 }
 
