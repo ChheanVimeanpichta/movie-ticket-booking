@@ -5,20 +5,32 @@ import type { Movie } from "@/data/movies";
 export default function MovieCard({
   movie,
   variant = "poster",
+  isComingSoon,
 }: {
   movie: Movie;
   variant?: "poster" | "landscape";
+  isComingSoon?: boolean;
 }) {
   const navigate = useNavigate();
+
+  const comingSoon =
+    isComingSoon ??
+    Boolean(
+      movie.releaseDate && (!movie.showtimes || movie.showtimes.length === 0)
+    );
+  const targetUrl = comingSoon
+    ? `/coming-soon/${movie.id}`
+    : `/select-screen/${movie.id}`;
+
   if (variant === "landscape") {
     return (
       <Link
-        to={`/coming-soon/${movie.id}`}
+        to={targetUrl}
         className="group relative block overflow-hidden rounded bg-cine-card transition-all duration-300 hover:bg-cine-card-hover hover:-translate-y-1"
       >
         <div className="aspect-video w-full overflow-hidden">
           <img
-            src={movie.landscape}
+            src={movie.landscape || movie.poster}
             alt={`${movie.title} still`}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -45,26 +57,33 @@ export default function MovieCard({
   return (
     <div className="group relative block">
       <Link
-        to={`/select-screen/${movie.id}`}
+        to={targetUrl}
         className="relative block overflow-hidden rounded bg-cine-card"
       >
-        <div className="aspect-[3/4] w-full">
+        <div className="aspect-[3/4] w-full overflow-hidden">
           <img
-            src={movie.poster}
+            src={movie.poster || movie.landscape}
             alt={`${movie.title} poster`}
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
 
-        {movie.score > 0 && (
-          <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded bg-cine-red/90 px-2 py-1">
+        {comingSoon && movie.releaseDate ? (
+          <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded bg-cine-red/90 px-2 py-1 shadow">
+            <Calendar size={11} className="text-white" />
+            <span className="font-mono text-xs font-bold uppercase text-white">
+              {movie.releaseDate}
+            </span>
+          </div>
+        ) : movie.score > 0 ? (
+          <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded bg-cine-red/90 px-2 py-1 shadow">
             <Star size={12} className="fill-white text-white" />
             <span className="font-mono text-xs font-bold text-white">
               {movie.score}
             </span>
           </div>
-        )}
+        ) : null}
 
         <div className="absolute inset-0 z-10 flex flex-col justify-between bg-gradient-to-t from-black/95 via-black/50 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
           <div />
@@ -76,7 +95,9 @@ export default function MovieCard({
               {movie.title}
             </p>
             <p className="mt-1 text-xs text-cine-text-light">
-              {movie.rating} &middot; {movie.runtime}
+              {comingSoon && movie.releaseDate
+                ? `Releasing ${movie.releaseDate}`
+                : `${movie.rating} · ${movie.runtime}`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -84,19 +105,21 @@ export default function MovieCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                navigate(`/select-screen/${movie.id}`);
+                navigate(targetUrl);
               }}
               className="flex-1 inline-flex items-center justify-center rounded bg-cine-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-cine-red/80"
             >
-              Book
+              {comingSoon ? "View Details" : "Book"}
             </button>
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                navigate(targetUrl);
               }}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 text-white/80 transition-colors hover:border-white hover:text-white"
+              title={comingSoon ? "View Details" : "More Info"}
             >
               <Info size={15} />
             </button>

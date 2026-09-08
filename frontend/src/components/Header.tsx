@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { MapPin, ChevronDown, Search, Bell, Menu, X, User } from "lucide-react";
+import { MapPin, ChevronDown, Search, Bell, Menu, X, User, Shield, ExternalLink } from "lucide-react";
 import { useNotifications } from "@/context/NotificationContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useAuth } from "@/context/AuthContext";
@@ -26,6 +26,9 @@ export default function Header() {
   const { isAuthenticated, user } = useAuth();
   const { movies } = useMovies();
   const avatarToDisplay = isAuthenticated && user?.avatar ? user.avatar : "";
+
+  const isElevatedUser = isAuthenticated && (user?.role === "Admin" || user?.role === "Staff" || user?.email?.toLowerCase() === "admin@gmail.com");
+  const elevatedTitle = user?.role === "Staff" ? "Staff Portal" : "Admin Suite";
 
   const searchList = movies && movies.length > 0 ? movies : nowShowingGrid;
 
@@ -216,6 +219,19 @@ export default function Header() {
               </span>
             )}
           </Link>
+          {isElevatedUser && (
+            <a
+              href="http://localhost:5173/admin"
+              target="_blank"
+              rel="noreferrer"
+              title={`Open CineStar ${elevatedTitle}`}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 transition-all shadow-sm"
+            >
+              <Shield size={13} className="text-red-400 group-hover:text-white" />
+              <span>{elevatedTitle}</span>
+              <ExternalLink size={11} className="opacity-70" />
+            </a>
+          )}
           <Link
             to="/profile"
             aria-label="Profile"
@@ -279,6 +295,21 @@ export default function Header() {
               </span>
             )}
           </NavLink>
+          {isElevatedUser && (
+            <a
+              href="http://localhost:5173/admin"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center justify-between rounded px-2 py-3 font-body text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Shield size={16} />
+                <span>{elevatedTitle}</span>
+              </span>
+              <ExternalLink size={14} />
+            </a>
+          )}
           <div className="mt-2 flex items-center gap-3 border-t border-cine-border pt-3">
             <button className="flex items-center gap-1.5 rounded-full border border-cine-border px-3 py-1.5 text-xs font-medium text-cine-text-light">
               <MapPin size={14} className="text-cine-red" />

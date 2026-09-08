@@ -12,6 +12,8 @@ import {
   X,
   Upload,
   LogOut,
+  Shield,
+  ExternalLink,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -123,6 +125,15 @@ export default function ProfilePage() {
   const displayName = isAuthenticated && user ? (user.name || profile.name) : "";
   const displayAvatar = isAuthenticated && user?.avatar ? user.avatar : "";
 
+  const userRole = user?.role || (user?.email?.toLowerCase() === "admin@gmail.com" ? "Admin" : "Customer");
+  const isElevatedUser = isAuthenticated && (userRole === "Admin" || userRole === "Staff");
+  const roleBadgeText = userRole === "Admin" ? "ADMIN" : userRole === "Staff" ? "STAFF" : "ELITE";
+  const roleBadgeStyle = userRole === "Admin"
+    ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/30"
+    : userRole === "Staff"
+    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30"
+    : "bg-cine-red text-white";
+
   useEffect(() => {
     if (isAuthenticated && user) {
       updateProfile({
@@ -217,6 +228,15 @@ export default function ProfilePage() {
   }, [user?.email, user?.id, profile.email]);
 
   const accountRows = [
+    ...(isElevatedUser
+      ? [
+          {
+            label: userRole === "Staff" ? "Staff Operations Portal" : "Admin Management Suite",
+            icon: Shield,
+            onClick: () => window.open("http://localhost:5173/admin", "_blank"),
+          },
+        ]
+      : []),
     { label: "Edit Profile", icon: User, onClick: openEditProfile },
     { label: "Payment Methods", icon: CreditCard, onClick: () => setShowPaymentMethods(true) },
     { label: "Purchase History", icon: History, to: "/notifications?tab=history" },
@@ -359,8 +379,8 @@ export default function ProfilePage() {
                   <User size={40} className="text-cine-text" />
                 </div>
               )}
-              <span className="absolute -bottom-2 left-2 rounded bg-cine-red px-2 py-0.5 font-mono text-[10px] font-black tracking-widest text-white">
-                ELITE
+              <span className={`absolute -bottom-2 left-2 rounded px-2 py-0.5 font-mono text-[10px] font-black tracking-widest ${roleBadgeStyle}`}>
+                {roleBadgeText}
               </span>
             </div>
             <div>
@@ -373,13 +393,26 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={openEditProfile}
-            className="inline-flex items-center gap-2 self-start rounded-lg border border-cine-border bg-cine-card px-4 py-2 font-mono text-xs font-semibold text-cine-red transition-colors hover:border-cine-red md:ml-auto md:self-center"
-          >
-            <Settings size={13} />
-            EDIT PROFILE
-          </button>
+          <div className="flex flex-wrap items-center gap-3 self-start md:ml-auto md:self-center">
+            {isElevatedUser && (
+              <a
+                href="http://localhost:5173/admin"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 font-mono text-xs font-semibold text-white shadow-lg shadow-red-600/25 transition hover:bg-red-500"
+              >
+                <Shield size={14} />
+                <span>{userRole === "Staff" ? "STAFF PORTAL ↗" : "ADMIN DASHBOARD ↗"}</span>
+              </a>
+            )}
+            <button
+              onClick={openEditProfile}
+              className="inline-flex items-center gap-2 rounded-lg border border-cine-border bg-cine-card px-4 py-2 font-mono text-xs font-semibold text-cine-red transition-colors hover:border-cine-red"
+            >
+              <Settings size={13} />
+              EDIT PROFILE
+            </button>
+          </div>
         </div>
 
         {/* Stats Row */}

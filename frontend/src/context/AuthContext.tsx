@@ -14,6 +14,7 @@ export interface User {
   email: string;
   phone: string;
   avatar: string;
+  role?: "Admin" | "Staff" | "Customer";
 }
 
 interface AuthContextType {
@@ -95,6 +96,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.setItem(USERS_KEY, JSON.stringify(users));
             window.dispatchEvent(new Event("cinestar_auth_changed"));
             alert("Your account has been disabled by an administrator.");
+          } else if (data && data.role) {
+            setUser((prev) => {
+              if (!prev) return null;
+              if (prev.role === data.role) return prev;
+              return { ...prev, role: data.role };
+            });
           }
         })
         .catch(() => {});
@@ -151,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: data.customer.email,
             phone: data.customer.phone || "",
             avatar: data.customer.avatarUrl || "",
+            role: data.customer.role || (data.customer.email.toLowerCase() === "admin@gmail.com" ? "Admin" : "Customer"),
           };
           setUser(loggedInUser);
 
@@ -248,6 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: email.toLowerCase(),
       phone,
       avatar: "",
+      role: email.toLowerCase() === "admin@gmail.com" ? "Admin" : "Customer",
     };
     setUser(newUser);
 
@@ -272,6 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: info.email,
           phone: "",
           avatar: info.picture,
+          role: info.email.toLowerCase() === "admin@gmail.com" ? "Admin" : "Customer",
         };
         setUser(googleUser);
 
