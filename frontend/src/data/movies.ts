@@ -206,9 +206,11 @@ export type GridMovie = {
   genre: string;
   score: number | null;
   poster: string;
-  badge?: "IMAX" | "4DX" | "CineStar";
+  badge?: "IMAX" | "4DX" | "CineStar" | string;
   extra?: string;
   hasBookBtn?: boolean;
+  releaseDate?: string;
+  isComingSoon?: boolean;
 };
 
 export const nowShowingGrid: GridMovie[] = [

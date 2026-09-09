@@ -8,9 +8,9 @@ import { useMovies } from "@/context/MovieContext";
 import { nowShowingGrid } from "@/data/movies";
 
 const NAV_LINKS = [
-  
   { label: "Home", to: "/" },
   { label: "Movies", to: "/movies" },
+  { label: "Coming Soon", to: "/coming-soon" },
   { label: "Theaters", to: "/theaters" },
   { label: "Offers", to: "/offers" },
   { label: "About Us", to: "/about" },
@@ -55,7 +55,10 @@ export default function Header() {
 
   function handleSearchSubmit() {
     if (results.length > 0) {
-      navigate(`/select-screen/${results[0].id}`);
+      const target = results[0].isComingSoon
+        ? `/coming-soon/${results[0].id}`
+        : `/select-screen/${results[0].id}`;
+      navigate(target);
       setSearchOpen(false);
       setQuery("");
     }
@@ -174,7 +177,10 @@ export default function Header() {
                           key={movie.id}
                           type="button"
                           onClick={() => {
-                            navigate(`/select-screen/${movie.id}`);
+                            const target = movie.isComingSoon
+                              ? `/coming-soon/${movie.id}`
+                              : `/select-screen/${movie.id}`;
+                            navigate(target);
                             setSearchOpen(false);
                             setQuery("");
                           }}

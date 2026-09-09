@@ -27,7 +27,14 @@ function isLaterThanToday(releaseDate?: string | null): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const target = new Date(releaseDate);
+    const parts = releaseDate.split("-");
+    let target: Date;
+    if (parts.length === 3) {
+      target = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    } else {
+      target = new Date(releaseDate);
+    }
+
     if (!isNaN(target.getTime())) {
       target.setHours(0, 0, 0, 0);
       return target.getTime() > today.getTime();
@@ -51,20 +58,30 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        // Partition movies into Coming Soon (releaseDate > today) and Now Showing
+        // Distinct separation:
+        // - Coming Soon: releaseDate is strictly in the future (> today)
+        // - Now Showing: releaseDate is today or in the past (or not specified)
         const comingSoonData = data.filter((m: any) => isLaterThanToday(m.releaseDate));
         const nowShowingData = data.filter((m: any) => !isLaterThanToday(m.releaseDate));
 
-        const mappedGrid: GridMovie[] = (nowShowingData.length > 0 ? nowShowingData : data).map((m: any) => ({
-          id: m.id,
-          title: m.title,
-          genre: m.genre || "General",
-          score: m.score !== null && m.score !== undefined ? Number(m.score) : null,
-          poster: m.poster || "https://picsum.photos/seed/movie/300/450",
-          badge: m.badge || undefined,
-          extra: m.synopsis || "Now Showing in Cinemas",
-          hasBookBtn: m.hasBookBtn ?? true,
-        }));
+        // Global movie catalog: contains ALL movies with distinct isComingSoon status
+        const mappedGrid: GridMovie[] = data.map((m: any) => {
+          const isComingSoon = isLaterThanToday(m.releaseDate);
+          return {
+            id: m.id,
+            title: m.title,
+            genre: m.genre || "General",
+            score: m.score !== null && m.score !== undefined ? Number(m.score) : null,
+            poster: m.poster || "https://picsum.photos/seed/movie/300/450",
+            badge: m.badge || undefined,
+            extra: isComingSoon && m.releaseDate
+              ? `Releasing ${new Date(m.releaseDate).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`
+              : (m.synopsis || "Now Showing in Cinemas"),
+            hasBookBtn: !isComingSoon && (m.hasBookBtn ?? true),
+            releaseDate: m.releaseDate,
+            isComingSoon,
+          };
+        });
 
         const mappedNowShowing: Movie[] = (nowShowingData.length > 0 ? nowShowingData : data).map((m: any) => ({
           id: m.id,
