@@ -4,7 +4,7 @@ export type Movie = {
   genre: string;
   rating: string;
   runtime: string;
-  score: number;
+  score?: number | null;
   poster: string;
   landscape: string;
   synopsis: string;
@@ -119,86 +119,7 @@ export const nowShowing: Movie[] = [
   },
 ];
 
-export const comingSoon: Movie[] = [
-  {
-    id: "nightshade-protocol",
-    title: "Nightshade Protocol",
-    genre: "Sci-Fi / Thriller",
-    rating: "PG-13",
-    runtime: "2h 05m",
-    score: 0,
-    poster: "https://picsum.photos/seed/nightshade-land/400/600",
-    landscape: "https://picsum.photos/seed/nightshade-land/800/450",
-    synopsis: "A courier AI discovers the package it's been delivering is itself.",
-    showtimes: [],
-    releaseDate: "12 AUG 2026",
-  },
-  {
-    id: "glass-orchard",
-    title: "Glass Orchard",
-    genre: "Drama",
-    rating: "PG-13",
-    runtime: "1h 56m",
-    score: 0,
-    poster: "https://picsum.photos/seed/glass-land/400/600",
-    landscape: "https://picsum.photos/seed/glass-land/800/450",
-    synopsis: "Three sisters return to the family orchard the summer it's sold.",
-    showtimes: [],
-    releaseDate: "19 AUG 2026",
-  },
-  {
-    id: "midnight-ferry",
-    title: "Midnight Ferry",
-    genre: "Mystery",
-    rating: "R",
-    runtime: "1h 49m",
-    score: 0,
-    poster: "https://picsum.photos/seed/midnight-land/400/600",
-    landscape: "https://picsum.photos/seed/midnight-land/800/450",
-    synopsis: "The last ferry of the night never runs empty.",
-    showtimes: [],
-    releaseDate: "26 AUG 2026",
-  },
-  {
-    id: "salt-and-static",
-    title: "Salt & Static",
-    genre: "Romance / Drama",
-    rating: "PG-13",
-    runtime: "1h 52m",
-    score: 0,
-    poster: "https://picsum.photos/seed/salt-land/400/600",
-    landscape: "https://picsum.photos/seed/salt-land/800/450",
-    synopsis: "A lighthouse keeper and a radio operator, ninety miles apart.",
-    showtimes: [],
-    releaseDate: "02 SEP 2026",
-  },
-  {
-    id: "echo-bend",
-    title: "Echo Bend",
-    genre: "Horror / Sci-Fi",
-    rating: "R",
-    runtime: "1h 44m",
-    score: 0,
-    poster: "https://picsum.photos/seed/echo-land/400/600",
-    landscape: "https://picsum.photos/seed/echo-land/800/450",
-    synopsis: "A research team in a remote canyon discovers sound can rewind time.",
-    showtimes: [],
-    releaseDate: "09 SEP 2026",
-  },
-  {
-    id: "golden-hour",
-    title: "Golden Hour",
-    genre: "Comedy / Drama",
-    rating: "PG",
-    runtime: "1h 40m",
-    score: 0,
-    poster: "https://picsum.photos/seed/golden-land/400/600",
-    landscape: "https://picsum.photos/seed/golden-land/800/450",
-    synopsis: "A retired photographer and a runaway teen form an unlikely friendship.",
-    showtimes: [],
-    releaseDate: "16 SEP 2026",
-  },
-];
+export const comingSoon: Movie[] = [];
 
 export type GridMovie = {
   id: string;

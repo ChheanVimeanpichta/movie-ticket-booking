@@ -10,7 +10,7 @@ import { nowShowingGrid } from "@/data/movies";
 const NAV_LINKS = [
   { label: "Home", to: "/" },
   { label: "Movies", to: "/movies" },
-  { label: "Coming Soon", to: "/coming-soon" },
+  // { label: "Coming Soon", to: "/coming-soon" },
   { label: "Theaters", to: "/theaters" },
   { label: "Offers", to: "/offers" },
   { label: "About Us", to: "/about" },
