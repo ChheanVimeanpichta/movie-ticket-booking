@@ -76,7 +76,7 @@ export default function MovieCard({
               {movie.releaseDate}
             </span>
           </div>
-        ) : movie.score > 0 ? (
+        ) : movie.score != null && movie.score > 0 ? (
           <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded bg-cine-red/90 px-2 py-1 shadow">
             <Star size={12} className="fill-white text-white" />
             <span className="font-mono text-xs font-bold text-white">

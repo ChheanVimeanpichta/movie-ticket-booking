@@ -148,11 +148,17 @@ export default function Home() {
               VIEW ALL MOVIES &rarr;
             </Link>
           </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {currentComingSoon.slice(0, 4).map((movie) => (
-              <MovieCard key={movie.id} movie={movie} variant="poster" isComingSoon />
-            ))}
-          </div>
+          {currentComingSoon.length === 0 ? (
+            <div className="text-center py-10 rounded-xl border border-white/5 bg-cine-card/30">
+              <p className="text-cine-text text-sm">No upcoming movies currently scheduled.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {currentComingSoon.slice(0, 4).map((movie) => (
+                <MovieCard key={movie.id} movie={movie} variant="poster" isComingSoon />
+              ))}
+            </div>
+          )}
         </section>
       </main>
 
