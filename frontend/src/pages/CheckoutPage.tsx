@@ -30,6 +30,7 @@ type MovieData = (Movie | GridMovie) & {
 interface CheckoutState {
   date?: string;
   cinema?: string;
+  hall?: string;
   format?: string;
   time?: string;
   seats?: string[];
@@ -127,8 +128,9 @@ export default function CheckoutPage() {
   const total = locationState?.total ?? subtotal + serviceFee;
 
   const dateLabel = locationState?.date || "Today";
-  const timeLabel = locationState?.time || "8:30 PM";
-  const cinemaLabel = locationState?.cinema || "CineStar Luxury Cinema, Hall 4";
+  const timeLabel = locationState?.time || "18:30";
+  const cinemaLabel = locationState?.cinema || "CineStar Downtown";
+  const hallLabel = locationState?.hall;
   const formatLabel = locationState?.format || "IMAX 2D";
   const formatPill = formatLabel.split(/\s+/)[0] || "IMAX";
   const genrePill = movie?.genre
@@ -257,10 +259,17 @@ export default function CheckoutPage() {
                   <h2 className="mt-2 text-base font-bold text-cine-white">
                     {movie.title}
                   </h2>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-cine-text">
-                    <MapPin size={12} className="shrink-0" />
-                    <span className="truncate">{cinemaLabel}</span>
-                  </p>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-cine-text flex-wrap">
+                    <p className="flex items-center gap-1">
+                      <MapPin size={12} className="shrink-0 text-cine-red" />
+                      <span className="truncate text-cine-white font-medium">{cinemaLabel}</span>
+                    </p>
+                    {hallLabel && (
+                      <span className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                        {hallLabel}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

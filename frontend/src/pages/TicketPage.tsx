@@ -187,7 +187,7 @@ export default function TicketPage() {
   }
 
   const refCode = `CS-${booking.id.toUpperCase().replace(/[^A-Z0-9]/g, "")}`;
-  const hall = "Hall 4";
+  const hall = (booking as any).hall || "Hall 1";
   const qrData = `CineStar|${booking.title}|${booking.cinema}|${booking.date}|${booking.time}|${booking.seats.join("+")}`;
   const barcode = booking.id
     .split("")

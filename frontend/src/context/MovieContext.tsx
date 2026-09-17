@@ -93,7 +93,11 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           poster: m.poster || "https://picsum.photos/seed/movie/300/450",
           landscape: m.poster || "https://picsum.photos/seed/movie/800/450",
           synopsis: m.synopsis || "Now showing exclusively at CineStar.",
-          showtimes: ["12:30", "15:45", "19:00", "22:15"],
+          showtimes: Array.isArray(m.showtimes)
+            ? m.showtimes
+            : Array.isArray(m.screenings)
+            ? m.screenings.map((s: any) => s.time)
+            : [],
           releaseDate: m.releaseDate,
         }));
 

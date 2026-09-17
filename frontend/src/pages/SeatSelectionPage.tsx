@@ -40,6 +40,7 @@ export default function SeatSelectionPage() {
   const locationState = useLocation().state as {
     date?: string;
     cinema?: string;
+    hall?: string;
     format?: string;
     time?: string;
   } | null;
@@ -53,8 +54,9 @@ export default function SeatSelectionPage() {
     nowShowingGrid.find((m) => m.id === id);
 
   const formatLabel = locationState?.format || "IMAX 2D";
-  const timeLabel = locationState?.time || "8:30 PM";
-  const cinemaLabel = locationState?.cinema || "Hall 4, IMAX";
+  const timeLabel = locationState?.time || "18:30";
+  const cinemaLabel = locationState?.cinema || "CineStar Downtown";
+  const hallLabel = locationState?.hall;
   const dateLabel = locationState?.date || "Today";
 
   useEffect(() => {
@@ -125,11 +127,19 @@ export default function SeatSelectionPage() {
                   <h1 className="text-2xl font-black text-cine-white md:text-3xl">
                     {movie.title}
                   </h1>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-cine-text">
-                    <span className="flex items-center gap-1">
-                      <MapPin size={12} />
+                  <div className="mt-1 flex items-center gap-2 text-xs text-cine-text flex-wrap">
+                    <span className="flex items-center gap-1 font-medium text-cine-white">
+                      <MapPin size={12} className="text-cine-red" />
                       {cinemaLabel}
                     </span>
+                    {hallLabel && (
+                      <>
+                        <span className="text-cine-border">&bull;</span>
+                        <span className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                          {hallLabel}
+                        </span>
+                      </>
+                    )}
                     <span className="text-cine-border">&bull;</span>
                     <span className="flex items-center gap-1">
                       <Clock size={12} />
@@ -304,6 +314,7 @@ export default function SeatSelectionPage() {
                           state: {
                             date: dateLabel,
                             cinema: cinemaLabel,
+                            hall: hallLabel,
                             format: formatLabel,
                             time: timeLabel,
                             seats: selectedSeats,
