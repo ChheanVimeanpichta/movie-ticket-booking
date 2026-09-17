@@ -23,8 +23,8 @@ export default function Login() {
       } else {
         setError("Invalid email/username or password.");
       }
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Invalid email/username or password.");
     } finally {
       setIsSubmitting(false);
     }
@@ -99,7 +99,11 @@ export default function Login() {
               </div>
             </div>
 
-            {error && <p className="text-cine-red text-sm text-center -mt-1">{error}</p>}
+            {error && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center -mt-1">
+                <p className="text-cine-red text-xs font-semibold leading-relaxed">{error}</p>
+              </div>
+            )}
 
             <button
               type="submit"

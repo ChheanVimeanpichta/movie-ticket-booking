@@ -17,6 +17,8 @@ export interface User {
   role?: "Admin" | "Staff" | "Customer";
 }
 
+import AccountDisabledModal from "../components/shared/AccountDisabledModal";
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
@@ -31,6 +33,13 @@ interface AuthContextType {
   closeLoginPopup: () => void;
   switchToSignup: () => void;
   switchToLogin: () => void;
+  accountDisabledNotice: {
+    isOpen: boolean;
+    email?: string;
+    message?: string;
+  } | null;
+  showAccountDisabledNotice: (email?: string, message?: string) => void;
+  closeAccountDisabledNotice: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,16 +76,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [popupMode, setPopupMode] = useState<"login" | "signup">("login");
   const [pendingCallback, setPendingCallback] = useState<(() => void) | null>(null);
 
+  const [accountDisabledNotice, setAccountDisabledNotice] = useState<{
+    isOpen: boolean;
+    email?: string;
+    message?: string;
+  } | null>(null);
+
+  const showAccountDisabledNotice = useCallback((email?: string, message?: string) => {
+    setIsLoginPopupOpen(false);
+    setAccountDisabledNotice({
+      isOpen: true,
+      email,
+      message:
+        message ||
+        "Your account has been disabled by an administrator. Access to booking, active sessions, and reservations has been suspended.",
+    });
+  }, []);
+
+  const closeAccountDisabledNotice = useCallback(() => {
+    setAccountDisabledNotice(null);
+  }, []);
+
+  const handleDisabledUser = useCallback(
+    (userEmail: string, customMessage?: string) => {
+      setUser(null);
+      sessionStorage.removeItem(CURRENT_USER_KEY);
+      sessionStorage.removeItem("cinestar_active_user_email");
+      sessionStorage.removeItem("cinestar_profile");
+      localStorage.removeItem(CURRENT_USER_KEY);
+      localStorage.removeItem("cinestar_active_user_email");
+      localStorage.removeItem("cinestar_profile");
+      const users = getStoredUsers();
+      delete users[userEmail.toLowerCase()];
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      window.dispatchEvent(new Event("cinestar_auth_changed"));
+      showAccountDisabledNotice(userEmail, customMessage);
+    },
+    [showAccountDisabledNotice]
+  );
+
   const isAuthenticated = user !== null;
 
-
-
   useEffect(() => {
-    if (user) {
-      sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem("cinestar_active_user_email", user.email);
+    if (!user?.email) {
+      sessionStorage.removeItem(CURRENT_USER_KEY);
+      sessionStorage.removeItem("cinestar_active_user_email");
+      localStorage.removeItem(CURRENT_USER_KEY);
+      localStorage.removeItem("cinestar_active_user_email");
+      window.dispatchEvent(new Event("cinestar_auth_changed"));
+      return;
+    }
 
-      // Verify active user is not suspended/disabled in CineStar Backend
+    sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+    sessionStorage.setItem("cinestar_active_user_email", user.email);
+
+    const verifyStatus = () => {
       fetch(`http://localhost:5000/api/customers/status/${encodeURIComponent(user.email)}`)
         .then((res) => {
           if (res.status === 403) {
@@ -86,16 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
         .then((data) => {
           if (data && (data.isSuspended || data.status === "Suspended")) {
-            setUser(null);
-            sessionStorage.removeItem(CURRENT_USER_KEY);
-            sessionStorage.removeItem("cinestar_active_user_email");
-            localStorage.removeItem(CURRENT_USER_KEY);
-            localStorage.removeItem("cinestar_active_user_email");
-            const users = getStoredUsers();
-            delete users[user.email.toLowerCase()];
-            localStorage.setItem(USERS_KEY, JSON.stringify(users));
-            window.dispatchEvent(new Event("cinestar_auth_changed"));
-            alert("Your account has been disabled by an administrator.");
+            handleDisabledUser(user.email);
           } else if (data && data.role) {
             setUser((prev) => {
               if (!prev) return null;
@@ -105,14 +150,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         })
         .catch(() => {});
-    } else {
-      sessionStorage.removeItem(CURRENT_USER_KEY);
-      sessionStorage.removeItem("cinestar_active_user_email");
-      localStorage.removeItem(CURRENT_USER_KEY);
-      localStorage.removeItem("cinestar_active_user_email");
-    }
-    window.dispatchEvent(new Event("cinestar_auth_changed"));
-  }, [user]);
+    };
+
+    verifyStatus();
+    const interval = setInterval(verifyStatus, 10000);
+    const onFocus = () => verifyStatus();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user?.email, handleDisabledUser]);
 
   const login = useCallback(async (emailOrUsername: string, password: string): Promise<boolean> => {
     let networkFailed = false;
@@ -127,6 +176,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (res.status === 403) {
         const data = await res.json().catch(() => ({}));
+        const msg =
+          data.message ||
+          "Your account has been disabled by an administrator. Please contact support.";
         // Account disabled by admin: purge local and session storage so user cannot login
         const users = getStoredUsers();
         delete users[emailOrUsername.toLowerCase()];
@@ -135,7 +187,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionStorage.removeItem("cinestar_active_user_email");
         localStorage.removeItem(CURRENT_USER_KEY);
         localStorage.removeItem("cinestar_active_user_email");
-        throw new Error(data.message || "Your account has been disabled by an administrator. Please contact support.");
+        showAccountDisabledNotice(emailOrUsername, msg);
+        throw new Error(msg);
       }
 
       if (res.ok) {
@@ -149,7 +202,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sessionStorage.removeItem("cinestar_active_user_email");
             localStorage.removeItem(CURRENT_USER_KEY);
             localStorage.removeItem("cinestar_active_user_email");
-            throw new Error("Your account has been disabled by an administrator. Please contact support.");
+            const msg =
+              "Your account has been disabled by an administrator. Please contact support.";
+            showAccountDisabledNotice(emailOrUsername, msg);
+            throw new Error(msg);
           }
 
           const loggedInUser: User = {
@@ -229,7 +285,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (res.status === 403) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "This account has been disabled by an administrator. Please contact support.");
+        const msg =
+          data.message ||
+          "This account has been disabled by an administrator. Please contact support.";
+        showAccountDisabledNotice(email, msg);
+        throw new Error(msg);
       }
 
       if (res.ok) {
@@ -416,6 +476,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         closeLoginPopup,
         switchToSignup,
         switchToLogin,
+        accountDisabledNotice,
+        showAccountDisabledNotice,
+        closeAccountDisabledNotice,
       }}
     >
       {children}
@@ -426,6 +489,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSwitchToSignup={switchToSignup}
           onSwitchToLogin={switchToLogin}
           onSuccess={() => handleLoginSuccess(pendingCallback)}
+        />
+      )}
+      {accountDisabledNotice?.isOpen && (
+        <AccountDisabledModal
+          isOpen={accountDisabledNotice.isOpen}
+          email={accountDisabledNotice.email}
+          message={accountDisabledNotice.message}
+          onClose={closeAccountDisabledNotice}
         />
       )}
     </AuthContext.Provider>
