@@ -87,102 +87,67 @@ export function resolveVenue(
 ): { venueId: string; venueName: string; hallName: string } {
   const rawVenue = (s.venueName || s.theaterName || s.venue || "").trim();
   const rawHall = (s.hall || "").trim();
-
-  // 1. If rawVenue is already a proper Venue name (and NOT a hall)
-  if (rawVenue && !isHallName(rawVenue)) {
-    return {
-      venueId: s.venueId || "v-001",
-      venueName: rawVenue,
-      hallName: rawHall || (isHallName(s.theaterId) ? s.theaterId.replace(/^th-/, "").replace(/-/g, " ") : "Hall 1"),
-    };
-  }
-
-  // 2. Lookup by venue ID
-  if (s.venueId && venueMap.has(s.venueId)) {
-    const vName = venueMap.get(s.venueId)!;
-    if (!isHallName(vName)) {
-      return {
-        venueId: s.venueId,
-        venueName: vName,
-        hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
-      };
-    }
-  }
-
-  // 3. Lookup by theater ID in hallVenueMap
-  if (s.theaterId && hallVenueMap.has(s.theaterId)) {
-    const vName = hallVenueMap.get(s.theaterId)!;
-    if (!isHallName(vName)) {
-      return {
-        venueId: s.venueId || "v-001",
-        venueName: vName,
-        hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
-      };
-    }
-  }
-
-  // 4. Lookup by hall in hallVenueMap
-  if (rawHall && hallVenueMap.has(rawHall.toLowerCase())) {
-    const vName = hallVenueMap.get(rawHall.toLowerCase())!;
-    if (!isHallName(vName)) {
-      return {
-        venueId: s.venueId || "v-001",
-        venueName: vName,
-        hallName: rawHall,
-      };
-    }
-  }
-
-  // 5. Explicit mappings for known CineStar halls & branches
   const searchStr = `${s.theaterId || ""} ${rawHall} ${rawVenue} ${s.venueId || ""}`.toLowerCase();
 
-  if (
-    searchStr.includes("riverside") ||
-    searchStr.includes("th-hall-5") ||
-    searchStr.includes("th-hall-6") ||
-    searchStr.includes("hall 5") ||
-    searchStr.includes("hall 6")
-  ) {
+  function toCanonical(name: string, id?: string) {
+    const l = `${name} ${id || ""}`.toLowerCase();
+    if (l.includes("riverside") || id === "v-002" || l.includes("th-hall-5") || l.includes("th-hall-6") || l.includes("hall 5") || l.includes("hall 6")) {
+      return { venueId: "v-002", venueName: "CineStar Riverside" };
+    }
+    if (l.includes("westgate") || l.includes("city center") || id === "v-003" || l.includes("th-hall-7") || l.includes("th-hall-8") || l.includes("hall 7") || l.includes("hall 8")) {
+      return { venueId: "v-003", venueName: "CineStar Westgate" };
+    }
+    if (l.includes("olympia") || l.includes("olypia") || id === "v-1788767915971" || l.includes("h-1788")) {
+      return { venueId: "v-1788767915971", venueName: "Cinestar Olypia Mall" };
+    }
+    if (l.includes("downtown") || l.includes("grand mall") || id === "v-001" || l.includes("th-hall-1") || l.includes("th-hall-2") || l.includes("th-hall-3") || l.includes("th-hall-4") || l.includes("hall 1") || l.includes("hall 2") || l.includes("hall 3") || l.includes("hall 4")) {
+      return { venueId: "v-001", venueName: "CineStar Downtown" };
+    }
+    return null;
+  }
+
+  // Check direct matches first
+  const matched = toCanonical(rawVenue, s.venueId) || toCanonical("", s.theaterId) || toCanonical(searchStr);
+  if (matched) {
     return {
-      venueId: "v-002",
-      venueName: "CineStar Riverside",
-      hallName: rawHall || (searchStr.includes("6") ? "Hall 6 - Dolby Atmos" : "Hall 5 - VIP Lounge"),
+      venueId: matched.venueId,
+      venueName: matched.venueName,
+      hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
     };
   }
 
-  if (
-    searchStr.includes("westgate") ||
-    searchStr.includes("th-hall-7") ||
-    searchStr.includes("th-hall-8") ||
-    searchStr.includes("hall 7") ||
-    searchStr.includes("hall 8")
-  ) {
-    return {
-      venueId: "v-003",
-      venueName: "CineStar Westgate",
-      hallName: rawHall || (searchStr.includes("8") ? "Hall 8 - Laser 2D" : "Hall 7 - ScreenX"),
-    };
+  // Lookup in venueMap
+  if (s.venueId && venueMap.has(s.venueId)) {
+    const vName = venueMap.get(s.venueId)!;
+    const can = toCanonical(vName, s.venueId);
+    if (can) {
+      return {
+        venueId: can.venueId,
+        venueName: can.venueName,
+        hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
+      };
+    }
   }
 
-  if (
-    searchStr.includes("olympia") ||
-    searchStr.includes("olypia") ||
-    searchStr.includes("h-1788")
-  ) {
-    return {
-      venueId: "v-1788767915971",
-      venueName: "Cinestar Olypia Mall",
-      hallName: rawHall || "Hall 1",
-    };
+  // Lookup in hallVenueMap
+  if (s.theaterId && hallVenueMap.has(s.theaterId)) {
+    const vName = hallVenueMap.get(s.theaterId)!;
+    const can = toCanonical(vName);
+    if (can) {
+      return {
+        venueId: can.venueId,
+        venueName: can.venueName,
+        hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
+      };
+    }
   }
 
-  // Default to CineStar Downtown (covering Hall 1, 2, 3, 4)
   const defaultVenue = venues.find((v) => v.name && !isHallName(v.name))?.name || "CineStar Downtown";
   const defaultVenueId = venues.find((v) => v.id)?.id || "v-001";
   return {
     venueId: defaultVenueId,
     venueName: defaultVenue,
-    hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 3 - IMAX"),
+    hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
   };
 }
 
@@ -243,6 +208,52 @@ export async function fetchAssignedMovieScreenings(
     }
   } catch (err) {
     console.warn("[showtimeService] Failed to fetch movie screenings from API:", err);
+  }
+
+  // 1b. Also query all backend screenings to catch any showtimes assigned to this movie
+  try {
+    const allRes = await fetch(`${API_BASE_URL}/screenings`);
+    if (allRes.ok) {
+      const allData = await allRes.json();
+      if (Array.isArray(allData)) {
+        allData.forEach((s: any) => {
+          const sMovieId = (s.movieId || "").toLowerCase();
+          const sTitle = (s.title || "").toLowerCase();
+          const matches =
+            (normId && (sMovieId === normId || sMovieId.includes(normId) || normId.includes(sMovieId))) ||
+            (normTitle && (sTitle === normTitle || sTitle.includes(normTitle) || normTitle.includes(sTitle)));
+
+          if (matches) {
+            const resolved = resolveVenue(s, venueMap, hallVenueMap, venues);
+            const isDup = screenings.some(
+              (existing) =>
+                existing.id === s.id ||
+                (existing.time === s.time &&
+                  existing.venueName === resolved.venueName &&
+                  existing.format === (s.format || "STANDARD").toUpperCase())
+            );
+            if (!isDup) {
+              screenings.push({
+                id: s.id || `sc-${Math.random()}`,
+                movieId: s.movieId || movieId,
+                theaterId: s.theaterId,
+                venueId: resolved.venueId,
+                venueName: resolved.venueName,
+                theaterName: resolved.venueName,
+                hall: resolved.hallName,
+                date: s.date || "Today",
+                time: s.time || "18:00",
+                format: (s.format || "STANDARD").toUpperCase(),
+                price: typeof s.price === "number" ? s.price : 12.0,
+                soldOut: Boolean(s.soldOut),
+              });
+            }
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("[showtimeService] Failed to fetch all screenings fallback:", err);
   }
 
   // 2. Cross-check localStorage for showtimes assigned in Admin portal
