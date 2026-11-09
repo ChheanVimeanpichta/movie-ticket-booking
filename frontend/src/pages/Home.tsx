@@ -2,10 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MovieCard from "@/components/MovieCard";
-import { nowShowing, comingSoon, heroSlides } from "@/data/movies";
+import { nowShowing, comingSoon } from "@/data/movies";
 import { useMovies } from "@/context/MovieContext";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import {
+  getSlides,
+  subscribeSlideUpdates,
+  SlideItem,
+  DEFAULT_HERO_SLIDES,
+} from "@/services/slideService";
 
 export default function Home() {
   const { nowShowingList, comingSoonList } = useMovies();
@@ -13,18 +19,48 @@ export default function Home() {
     nowShowingList && nowShowingList.length > 0 ? nowShowingList : nowShowing;
   const currentComingSoon =
     comingSoonList && comingSoonList.length > 0 ? comingSoonList : comingSoon;
+
+  const [slides, setSlides] = useState<SlideItem[]>(DEFAULT_HERO_SLIDES);
   const [current, setCurrent] = useState(0);
 
-  const next = useCallback(() => {
-    setCurrent((c) => (c + 1) % heroSlides.length);
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSlides() {
+      try {
+        const liveSlides = await getSlides();
+        if (isMounted && liveSlides && liveSlides.length > 0) {
+          setSlides(liveSlides);
+          setCurrent((c) => (c >= liveSlides.length ? 0 : c));
+        }
+      } catch (err) {
+        console.warn("Failed to load slides:", err);
+      }
+    }
+
+    loadSlides();
+
+    const unsubscribe = subscribeSlideUpdates(() => {
+      loadSlides();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
+  const next = useCallback(() => {
+    setCurrent((c) => (slides.length > 0 ? (c + 1) % slides.length : 0));
+  }, [slides.length]);
+
   useEffect(() => {
+    if (slides.length <= 1) return;
     const timer = setInterval(next, 6000);
     return () => clearInterval(timer);
-  }, [next]);
+  }, [next, slides.length]);
 
-  const slide = heroSlides[current];
+  const slide = slides[current] || slides[0] || DEFAULT_HERO_SLIDES[0];
 
   return (
     <>
@@ -32,18 +68,22 @@ export default function Home() {
 
       <main>
         <section className="relative isolate overflow-hidden h-[85vh] min-h-[600px]">
-          {heroSlides.map((s, i) => (
+          {slides.map((s, i) => (
             <div
-              key={i}
+              key={s.id || i}
               className={`absolute inset-0 transition-opacity duration-1000 ${
                 i === current ? "opacity-100" : "opacity-0"
               }`}
             >
               <img
                 src={s.image}
-                alt=""
+                alt={s.title || ""}
                 aria-hidden="true"
                 className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "https://picsum.photos/seed/hero-bg/1600/900";
+                }}
               />
             </div>
           ))}
@@ -53,7 +93,7 @@ export default function Home() {
           <div className="absolute inset-0 mx-auto flex max-w-7xl items-end px-4 pb-20 sm:px-6 lg:px-8">
             <div className="w-full">
               <div className="flex flex-wrap items-center gap-3 mb-4">
-                {slide.badges.map((badge) => {
+                {(slide.badges || []).map((badge) => {
                   const isFilled = badge === "NOW SHOWING";
                   return (
                     <span
@@ -72,8 +112,12 @@ export default function Home() {
 
               <h1 className="font-display text-6xl sm:text-7xl md:text-8xl font-black italic uppercase leading-[0.9] text-cine-white">
                 {slide.title}
-                <br />
-                <span className="text-cine-pink">{slide.subtitle}</span>
+                {slide.subtitle && (
+                  <>
+                    <br />
+                    <span className="text-cine-pink">{slide.subtitle}</span>
+                  </>
+                )}
               </h1>
 
               <p className="mt-4 max-w-lg text-sm leading-relaxed text-cine-text">
@@ -82,7 +126,7 @@ export default function Home() {
 
               <div className="mt-8 flex items-center gap-4">
                 <Link
-                  to="/movies"
+                  to={slide.linkUrl || "/movies"}
                   className="inline-flex items-center gap-2 rounded bg-cine-red px-7 py-3 font-body text-sm font-bold text-white transition-colors hover:bg-cine-red/90"
                 >
                   BOOK NOW
@@ -93,7 +137,7 @@ export default function Home() {
           </div>
 
           <div className="absolute bottom-8 right-8 flex gap-2">
-            {heroSlides.map((_, i) => (
+            {slides.map((_, i) => (
               <button
                 key={i}
                 type="button"

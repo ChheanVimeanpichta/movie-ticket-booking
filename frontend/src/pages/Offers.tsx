@@ -1,52 +1,40 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-
-const OFFERS = [
-  {
-    id: "bogo-popcorn",
-    image:
-      "https://tse2.mm.bing.net/th/id/OIP.DPQLRl96UnrsL1iMMOWGSgHaJQ?r=0&w=700&h=875&rs=1&pid=ImgDetMain&o=7&rm=3",
-    icon: "🍿",
-    caption: "Buy 1 Get 1 FREE! 🎉",
-  },
-  {
-    id: "combo-deal",
-    image: "https://m.media-amazon.com/images/I/71Jwq+AaNmL._SL1500_.jpg",
-    icon: "🥤",
-    caption: "Snack Combo — $8.50 🍗",
-  },
-  {
-    id: "student-special",
-    image:
-      "https://i.pinimg.com/736x/b4/2b/ef/b42bef7ed6fe12ca729d1dbd0ca0590d.jpg",
-    icon: "🎓",
-    caption: "Happy days for enjoying movies!",
-  },
-  {
-    id: "movie-night-deal",
-    image: "https://m.media-amazon.com/images/I/81F7FAqTakL._AC_.jpg",
-    icon: "🎬",
-    caption: "Enjoy a movie night with special pricing!",
-  },
-  {
-    id: "movie-night-combo",
-    image:
-      "https://i.pinimg.com/736x/c2/90/85/c2908591164ebc5e588855bb521ab466.jpg",
-    icon: "🎬",
-    caption: "Enjoy a movie with combo meals!",
-  },
-  {
-    id: "movie-night-popcorn",
-    image:
-      "https://tse4.mm.bing.net/th/id/OIP.M4_ooM3tSc6oEeYED_TZvAHaJQ?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
-    icon: "🍿",
-    caption: "Enjoy a movie with popcorn!",
-  },
-];
+import { getOffers, subscribeOfferUpdates, OfferItem, DEFAULT_OFFERS } from "@/services/offerService";
 
 export default function Offers() {
+  const [offers, setOffers] = useState<OfferItem[]>(DEFAULT_OFFERS);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadOffers() {
+      try {
+        const data = await getOffers();
+        if (isMounted) {
+          setOffers(data);
+          setLoading(false);
+        }
+      } catch {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    loadOffers();
+
+    // Subscribe to live SSE updates when admin updates offers
+    const unsubscribe = subscribeOfferUpdates(() => {
+      loadOffers();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
   return (
     <main className="relative min-h-screen bg-black text-cine-white">
       {/* Soft warm vignette glow at the top, clipped to its own layer so it doesn't break sticky positioning below */}
@@ -74,22 +62,38 @@ export default function Offers() {
         <h2 className="mb-4 text-xl font-bold">What we offer</h2>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {OFFERS.map((offer) => (
+          {offers.map((offer) => (
             <Link
               key={offer.id}
               to={`/offers/${offer.id}`}
-              className="block rounded-2xl border border-cine-border bg-cine-card p-3 transition hover:border-cine-red/50 hover:shadow-lg"
+              className="group block rounded-2xl border border-cine-border bg-cine-card p-3 transition hover:border-cine-red/50 hover:shadow-lg relative overflow-hidden"
             >
-              <div className="h-40 w-full overflow-hidden rounded-xl sm:h-48">
+              <div className="relative h-40 w-full overflow-hidden rounded-xl sm:h-48 bg-black/40">
                 <img
                   src={offer.image}
-                  alt={offer.caption}
-                  className="h-full w-full object-cover"
+                  alt={offer.caption || offer.title}
+                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src =
+                      "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=800&q=80";
+                  }}
                 />
+                {offer.tag && (
+                  <span className="absolute top-2.5 right-2.5 rounded-full bg-cine-red px-2.5 py-0.5 text-[11px] font-bold text-white shadow">
+                    {offer.tag}
+                  </span>
+                )}
+                {offer.badge && (
+                  <span className="absolute bottom-2.5 left-2.5 rounded bg-black/75 backdrop-blur-sm px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                    {offer.badge}
+                  </span>
+                )}
               </div>
               <div className="flex items-start gap-2 pt-3">
                 <span className="text-base leading-none">{offer.icon}</span>
-                <p className="text-sm font-bold leading-snug">{offer.caption}</p>
+                <p className="text-sm font-bold leading-snug text-cine-white group-hover:text-cine-red transition-colors">
+                  {offer.caption || offer.title}
+                </p>
               </div>
             </Link>
           ))}
