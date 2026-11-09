@@ -25,6 +25,7 @@ jobs:
         working-directory: backend
         run: |
           npm install
+          chmod -R +x node_modules/.bin || true
           npm run build
 
       - name: Copy Files to EC2
