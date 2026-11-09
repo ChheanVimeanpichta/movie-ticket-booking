@@ -22,6 +22,7 @@ export interface BookingHistoryItem {
   seats: string[];
   ticketCount: number;
   total: number;
+  paymentMethod?: string;
   bookedAt: string;
 }
 

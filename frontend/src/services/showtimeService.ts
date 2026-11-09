@@ -18,12 +18,29 @@ export interface AssignedScreening {
   soldOut?: boolean;
 }
 
+export interface SessionTimeDetail {
+  time: string;
+  hall: string;
+  price: number;
+  soldOut: boolean;
+  screeningId?: string;
+}
+
 export interface SessionCategory {
   name: string;
   price: string;
   times: string[];
   soldOut: string[];
   halls?: string[];
+  timeDetails?: Record<string, SessionTimeDetail>;
+}
+
+export interface DateInfo {
+  label: string;
+  full: string;
+  day: number;
+  month: string;
+  iso?: string;
 }
 
 export interface VenueData {
@@ -311,14 +328,87 @@ export async function fetchAssignedMovieScreenings(
 }
 
 /**
- * Group assigned screenings by Cinema Venue & Format
+ * Smart date matcher for screenings
+ */
+export function matchesScreeningDate(s: AssignedScreening, dInfo?: DateInfo | string): boolean {
+  if (!dInfo) return true;
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const tomorrowIso = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+  const sDate = (s.date || "").trim().toLowerCase();
+  const sTimeLabel = ((s as any).timeLabel || "").trim().toLowerCase();
+
+  let targetIso = "";
+  let targetLabel = "";
+  let targetFull = "";
+  let targetDay = 0;
+  let targetMonth = "";
+
+  if (typeof dInfo === "string") {
+    targetLabel = dInfo.trim().toLowerCase();
+    if (targetLabel === "today") targetIso = todayIso;
+    else if (targetLabel === "tomorrow") targetIso = tomorrowIso;
+  } else {
+    targetIso = dInfo.iso || "";
+    targetLabel = (dInfo.label || "").trim().toLowerCase();
+    targetFull = (dInfo.full || "").trim().toLowerCase();
+    targetDay = dInfo.day;
+    targetMonth = (dInfo.month || "").trim().toLowerCase();
+  }
+
+  // 1. Direct ISO comparison
+  if (targetIso && (sDate === targetIso || sDate.startsWith(targetIso))) return true;
+
+  // 2. Today check
+  if (targetLabel === "today") {
+    if (sDate === "today" || sTimeLabel === "today" || sDate === todayIso) return true;
+    if (sDate.startsWith(todayIso)) return true;
+  }
+
+  // 3. Tomorrow check
+  if (targetLabel === "tomorrow") {
+    if (sDate === "tomorrow" || sTimeLabel === "tomorrow" || sDate === tomorrowIso) return true;
+    if (sDate.startsWith(tomorrowIso)) return true;
+  }
+
+  // 4. Exact label match (e.g. "wed", "thu")
+  if (targetLabel && (sDate === targetLabel || sTimeLabel === targetLabel)) return true;
+
+  // 5. Full label match (e.g. "mon, nov 9")
+  if (targetFull && (sDate === targetFull || sTimeLabel === targetFull)) return true;
+
+  // 6. Match month & day (e.g. "nov 9", "nov 10")
+  if (targetMonth && targetDay) {
+    const md1 = `${targetMonth} ${targetDay}`;
+    const md2 = `${targetMonth} 0${targetDay}`;
+    if (sDate.includes(md1) || sTimeLabel.includes(md1) || sDate.includes(md2) || sTimeLabel.includes(md2)) {
+      return true;
+    }
+  }
+
+  // 7. Date object parse check
+  if (sDate && targetIso) {
+    try {
+      const parsed = new Date(sDate);
+      if (!isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === targetIso) {
+        return true;
+      }
+    } catch {}
+  }
+
+  return false;
+}
+
+/**
+ * Group assigned screenings by Cinema Venue & Format & Date
  */
 export function buildSessionsForCinema(
   screenings: AssignedScreening[],
   selectedCinema: string,
-  selectedDateLabel?: string
+  selectedDate?: DateInfo | string
 ): SessionCategory[] {
-  // Filter by the selected Venue
+  // 1. Filter by selected Cinema Venue
   const venueFiltered = screenings.filter((s) => {
     if (!selectedCinema || selectedCinema === "All Venues") return true;
     const vName = (s.venueName || s.theaterName || "").toLowerCase();
@@ -326,19 +416,33 @@ export function buildSessionsForCinema(
     return vName.includes(cName) || cName.includes(vName);
   });
 
-  const relevant = venueFiltered.length > 0 ? venueFiltered : screenings;
+  // 2. Filter by Date
+  const dateFiltered = venueFiltered.filter((s) => matchesScreeningDate(s, selectedDate));
+  const relevant = dateFiltered;
 
   // Group by format (IMAX, 4DX, DOLBY, 2D, STANDARD)
   const formatMap = new Map<
     string,
-    { times: Set<string>; soldOut: Set<string>; price: number; halls: Set<string> }
+    {
+      times: Set<string>;
+      soldOut: Set<string>;
+      price: number;
+      halls: Set<string>;
+      timeDetails: Record<string, SessionTimeDetail>;
+    }
   >();
 
   relevant.forEach((s) => {
     const fmt = (s.format || "STANDARD").toUpperCase();
     let entry = formatMap.get(fmt);
     if (!entry) {
-      entry = { times: new Set<string>(), soldOut: new Set<string>(), price: s.price, halls: new Set<string>() };
+      entry = {
+        times: new Set<string>(),
+        soldOut: new Set<string>(),
+        price: s.price,
+        halls: new Set<string>(),
+        timeDetails: {},
+      };
       formatMap.set(fmt, entry);
     }
     entry.times.add(s.time);
@@ -347,6 +451,14 @@ export function buildSessionsForCinema(
     }
     if (s.price) entry.price = s.price;
     if (s.hall) entry.halls.add(s.hall);
+
+    entry.timeDetails[s.time] = {
+      time: s.time,
+      hall: s.hall || "Hall 1",
+      price: s.price,
+      soldOut: Boolean(s.soldOut),
+      screeningId: s.id,
+    };
   });
 
   const categories: SessionCategory[] = [];
@@ -364,6 +476,7 @@ export function buildSessionsForCinema(
       times: timesSorted,
       soldOut: Array.from(val.soldOut),
       halls: Array.from(val.halls),
+      timeDetails: val.timeDetails,
     });
   });
 

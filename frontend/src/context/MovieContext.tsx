@@ -52,12 +52,40 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const fetchMovies = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/movies`);
-      if (!res.ok) {
-        throw new Error(`Failed to fetch movies: ${res.status}`);
+      const [res, scrRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/movies`).catch(() => null),
+        fetch(`${API_BASE_URL}/screenings`).catch(() => null),
+      ]);
+
+      if (!res || !res.ok) {
+        throw new Error(`Failed to fetch movies: ${res?.status || "network error"}`);
       }
       const data = await res.json();
+      const screeningsData = scrRes && scrRes.ok ? await scrRes.json().catch(() => []) : [];
+
       if (Array.isArray(data) && data.length > 0) {
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const todayScreeningCounts = new Map<string, number>();
+
+        if (Array.isArray(screeningsData)) {
+          screeningsData.forEach((s: any) => {
+            const sDate = (s.date || s.screeningDate || "").trim().toLowerCase();
+            const sTimeLabel = ((s as any).timeLabel || "").trim().toLowerCase();
+            const isToday =
+              sDate === todayIso ||
+              sDate === "today" ||
+              sTimeLabel === "today" ||
+              sDate.startsWith(todayIso);
+
+            if (isToday) {
+              const mId = (s.movieId || "").toLowerCase();
+              const mTitle = (s.title || s.movieTitle || "").toLowerCase();
+              if (mId) todayScreeningCounts.set(mId, (todayScreeningCounts.get(mId) || 0) + 1);
+              if (mTitle) todayScreeningCounts.set(mTitle, (todayScreeningCounts.get(mTitle) || 0) + 1);
+            }
+          });
+        }
+
         // Distinct separation:
         // - Coming Soon: releaseDate is strictly in the future (> today)
         // - Now Showing: releaseDate is today or in the past (or not specified)
@@ -67,39 +95,86 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Global movie catalog: contains ALL movies with distinct isComingSoon status
         const mappedGrid: GridMovie[] = data.map((m: any) => {
           const isComingSoon = isLaterThanToday(m.releaseDate);
+          const normId = (m.id || "").toLowerCase();
+          const normTitle = (m.title || "").toLowerCase();
+          const showtimeCountToday =
+            todayScreeningCounts.get(normId) ||
+            todayScreeningCounts.get(normTitle) ||
+            0;
+          const hasShowtimeToday = !isComingSoon && showtimeCountToday > 0;
+          const scoreNum =
+            m.score !== null && m.score !== undefined && m.score !== "" && !isNaN(Number(m.score))
+              ? Number(m.score)
+              : null;
+          const isRecommended = hasShowtimeToday || (scoreNum !== null && scoreNum >= 8.2);
+
           return {
             id: m.id,
             title: m.title,
             genre: m.genre || "General",
-            score: m.score !== null && m.score !== undefined && m.score !== "" && !isNaN(Number(m.score)) ? Number(m.score) : null,
+            score: scoreNum,
             poster: m.poster || "https://picsum.photos/seed/movie/300/450",
             badge: m.badge || undefined,
             extra: isComingSoon && m.releaseDate
               ? `Releasing ${new Date(m.releaseDate).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`
+              : hasShowtimeToday
+              ? `★ Showing Today • ${showtimeCountToday} session${showtimeCountToday > 1 ? "s" : ""}`
               : (m.synopsis || "Now Showing in Cinemas"),
             hasBookBtn: !isComingSoon && (m.hasBookBtn ?? true),
             releaseDate: m.releaseDate,
             isComingSoon,
+            hasShowtimeToday,
+            isRecommended,
+            showtimeCountToday,
           };
         });
 
-        const mappedNowShowing: Movie[] = (nowShowingData.length > 0 ? nowShowingData : data).map((m: any) => ({
-          id: m.id,
-          title: m.title,
-          genre: m.genre || "Action / Adventure",
-          rating: "PG-13",
-          runtime: m.durationMins ? `${Math.floor(m.durationMins / 60)}h ${m.durationMins % 60}m` : "2h 15m",
-          score: m.score !== null && m.score !== undefined && m.score !== "" && !isNaN(Number(m.score)) ? Number(m.score) : null,
-          poster: m.poster || "https://picsum.photos/seed/movie/300/450",
-          landscape: m.poster || "https://picsum.photos/seed/movie/800/450",
-          synopsis: m.synopsis || "Now showing exclusively at CineStar.",
-          showtimes: Array.isArray(m.showtimes)
-            ? m.showtimes
-            : Array.isArray(m.screenings)
-            ? m.screenings.map((s: any) => s.time)
-            : [],
-          releaseDate: m.releaseDate,
-        }));
+        const mappedNowShowing: Movie[] = (nowShowingData.length > 0 ? nowShowingData : data).map((m: any) => {
+          const normId = (m.id || "").toLowerCase();
+          const normTitle = (m.title || "").toLowerCase();
+          const showtimeCountToday =
+            todayScreeningCounts.get(normId) ||
+            todayScreeningCounts.get(normTitle) ||
+            0;
+          const hasShowtimeToday = showtimeCountToday > 0;
+          const scoreNum =
+            m.score !== null && m.score !== undefined && m.score !== "" && !isNaN(Number(m.score))
+              ? Number(m.score)
+              : null;
+          const isRecommended = hasShowtimeToday || (scoreNum !== null && scoreNum >= 8.2);
+
+          return {
+            id: m.id,
+            title: m.title,
+            genre: m.genre || "Action / Adventure",
+            rating: "PG-13",
+            runtime: m.durationMins ? `${Math.floor(m.durationMins / 60)}h ${m.durationMins % 60}m` : "2h 15m",
+            score: scoreNum,
+            poster: m.poster || "https://picsum.photos/seed/movie/300/450",
+            landscape: m.poster || "https://picsum.photos/seed/movie/800/450",
+            synopsis: m.synopsis || "Now showing exclusively at CineStar.",
+            showtimes: Array.isArray(m.showtimes)
+              ? m.showtimes
+              : Array.isArray(m.screenings)
+              ? m.screenings.map((s: any) => s.time)
+              : [],
+            releaseDate: m.releaseDate,
+            hasShowtimeToday,
+            isRecommended,
+            showtimeCountToday,
+          };
+        });
+
+        // Sort Now Showing:
+        // 1. Movies showing today first
+        // 2. Higher score first
+        mappedNowShowing.sort((a, b) => {
+          if (a.hasShowtimeToday && !b.hasShowtimeToday) return -1;
+          if (!a.hasShowtimeToday && b.hasShowtimeToday) return 1;
+          const scoreA = a.score || 0;
+          const scoreB = b.score || 0;
+          return scoreB - scoreA;
+        });
 
         const mappedComingSoon: Movie[] = comingSoonData.map((m: any) => ({
           id: m.id,
@@ -118,6 +193,26 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const resolvedComingSoon = mappedComingSoon.length > 0
           ? [...mappedComingSoon, ...defaultComingSoon.filter((def) => !mappedComingSoon.some((b) => b.id === def.id))]
           : defaultComingSoon;
+
+        // Sort mappedGrid:
+        // 1. Now Showing before Coming Soon
+        // 2. Movies showing today first (top recommendation)
+        // 3. Recommended / Top score first
+        mappedGrid.sort((a, b) => {
+          if (Boolean(a.isComingSoon) !== Boolean(b.isComingSoon)) {
+            return a.isComingSoon ? 1 : -1;
+          }
+          if (Boolean(a.hasShowtimeToday) !== Boolean(b.hasShowtimeToday)) {
+            return a.hasShowtimeToday ? -1 : 1;
+          }
+          if (Boolean(a.isRecommended) !== Boolean(b.isRecommended)) {
+            return a.isRecommended ? -1 : 1;
+          }
+          const scoreA = a.score || 0;
+          const scoreB = b.score || 0;
+          if (scoreB !== scoreA) return scoreB - scoreA;
+          return a.title.localeCompare(b.title);
+        });
 
         setMovies(mappedGrid);
         setNowShowingList(mappedNowShowing);

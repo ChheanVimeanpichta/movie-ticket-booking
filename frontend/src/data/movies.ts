@@ -10,6 +10,9 @@ export type Movie = {
   synopsis: string;
   showtimes: string[];
   releaseDate?: string;
+  hasShowtimeToday?: boolean;
+  isRecommended?: boolean;
+  showtimeCountToday?: number;
 };
 
 export const nowShowing: Movie[] = [
@@ -25,6 +28,9 @@ export const nowShowing: Movie[] = [
     synopsis:
       "A disgraced detective is pulled back into the city's underworld when the one case he never closed resurfaces.",
     showtimes: ["12:30", "15:45", "19:00", "22:15"],
+    hasShowtimeToday: true,
+    isRecommended: true,
+    showtimeCountToday: 2,
   },
   {
     id: "hollow-house",
@@ -132,6 +138,9 @@ export type GridMovie = {
   hasBookBtn?: boolean;
   releaseDate?: string;
   isComingSoon?: boolean;
+  hasShowtimeToday?: boolean;
+  isRecommended?: boolean;
+  showtimeCountToday?: number;
 };
 
 export const nowShowingGrid: GridMovie[] = [
@@ -144,15 +153,35 @@ export const nowShowingGrid: GridMovie[] = [
     badge: "IMAX",
     extra: "When the signal dies, the city follows.",
     hasBookBtn: true,
+    hasShowtimeToday: true,
+    isRecommended: true,
+    showtimeCountToday: 4,
   },
   {
-    id: "fairy secret",
-    title: "The Fairy Secret",
-    genre: "Action",
-    score: 7.4,
-    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdLMFblwS4y1QbzHFKs9g150scJslcAsSxTcdJMwid4w&s=10",
+    id: "spider-verse-2",
+    title: "SPIDER-MAN: INTO THE SPIDER-VERSE 2",
+    genre: "Animation/Action",
+    score: 8.5,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoGytKPuYMT7IQulS8QemehYHgNiNsOyuoxX2rbQsPdw&s=10",
     badge: "4DX",
-    extra: "Every spire hides a secret.",
+    extra: "Rise of the empire.",
+    hasBookBtn: true,
+    hasShowtimeToday: true,
+    isRecommended: true,
+    showtimeCountToday: 2,
+  },
+  {
+    id: "raya",
+    title: "Raya and the Last Dragon",
+    genre: "Mystery/Animation",
+    score: 8.2,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQm9pl3ezvWPpgU1UoObqXTpjE5Q4GskYSfKcZJNNNvFw&s=10",
+    badge: "CineStar",
+    extra: "Trust no one.",
+    hasBookBtn: true,
+    hasShowtimeToday: true,
+    isRecommended: true,
+    showtimeCountToday: 1,
   },
   {
     id: "jurrasic-echoes",
@@ -162,6 +191,7 @@ export const nowShowingGrid: GridMovie[] = [
     poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXVj1jwI4fGAbXd6dOf3emm0PzHhQj9-ZK6nv13pb5dQ&s=10",
     badge: "CineStar",
     extra: "Dir. A.G. Iñárritu",
+    isRecommended: true,
   },
   {
     id: "princes",
@@ -173,31 +203,21 @@ export const nowShowingGrid: GridMovie[] = [
     extra: "Beyond the known universe.",
   },
   {
+    id: "fairy secret",
+    title: "The Fairy Secret",
+    genre: "Action",
+    score: 7.4,
+    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdLMFblwS4y1QbzHFKs9g150scJslcAsSxTcdJMwid4w&s=10",
+    badge: "4DX",
+    extra: "Every spire hides a secret.",
+  },
+  {
     id: "pirate-echoes",
     title: "Pirate Fair: Echoes of the Sea",
     genre: "Horror",
     score: 6.8,
     poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdXmUXa0G1ezo-TA0vrr_GAhisBMegQz09jeJbDCgkRw&s=10",
     extra: "No vacancy. No escape.",
-  },
-  {
-    id: "spider-verse-2",
-    title: "SPIDER-MAN: INTO THE SPIDER-VERSE 2",
-    genre: "",
-    score: 8.5,
-    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoGytKPuYMT7IQulS8QemehYHgNiNsOyuoxX2rbQsPdw&s=10",
-    badge: "4DX",
-    extra: "Rise of the empire.",
-    hasBookBtn: true,
-  },
-  {
-    id: "raya",
-    title: "Raya and the Last Dragon",
-    genre: "Mystery",
-    score: null,
-    poster: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQm9pl3ezvWPpgU1UoObqXTpjE5Q4GskYSfKcZJNNNvFw&s=10",
-    badge: "CineStar",
-    extra: "Trust no one.",
   },
   {
     id: "sheep",

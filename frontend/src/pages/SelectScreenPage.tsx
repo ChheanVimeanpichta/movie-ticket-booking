@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Star, Clock, Calendar, ChevronDown, ShieldAlert, AlertTriangle, RefreshCw, Building2 } from "lucide-react";
+import { Star, Clock, Calendar, ChevronDown, ShieldAlert, AlertTriangle, RefreshCw, Building2, ArrowLeft, ArrowRight } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { nowShowing, nowShowingGrid } from "@/data/movies";
@@ -13,13 +13,14 @@ import {
   buildSessionsForCinema,
   isHallName,
   type SessionCategory,
+  type DateInfo,
 } from "@/services/showtimeService";
 import ShowtimeNoticeModal from "@/components/shared/ShowtimeNoticeModal";
 
 type MovieData = (Movie | GridMovie) & { synopsis?: string; rating?: string; runtime?: string; landscape?: string };
 
-function generateDates() {
-  const dates: { label: string; full: string; day: number; month: string }[] = [];
+function generateDates(): DateInfo[] {
+  const dates: DateInfo[] = [];
   const today = new Date();
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
@@ -39,6 +40,7 @@ function generateDates() {
       }),
       day: d.getDate(),
       month: d.toLocaleDateString("en-US", { month: "short" }),
+      iso: d.toISOString().slice(0, 10),
     });
   }
   return dates;
@@ -184,11 +186,13 @@ export default function SelectScreenPage() {
   } = useMovieShowtimes(id, movie?.title);
 
   const availableCinemas = useMemo(() => {
-    const validAssigned = assignedCinemas.filter((c) => Boolean(c) && !isHallName(c));
-    if (validAssigned.length > 0) return validAssigned;
-    if (hasAssignedShowtimes) return CINEMA_OPTIONS;
-    return ["No Cinema Assigned"];
-  }, [assignedCinemas, hasAssignedShowtimes]);
+    const list = new Set<string>();
+    assignedCinemas.forEach((c) => {
+      if (Boolean(c) && !isHallName(c)) list.add(c);
+    });
+    CINEMA_OPTIONS.forEach((c) => list.add(c));
+    return Array.from(list);
+  }, [assignedCinemas]);
 
   const [selectedCinema, setSelectedCinema] = useState(availableCinemas[0] || "CineStar Downtown");
 
@@ -210,10 +214,7 @@ export default function SelectScreenPage() {
 
   const cinemaSessions: SessionCategory[] = useMemo(() => {
     if (!hasAssignedShowtimes) return [];
-    const built = buildSessionsForCinema(screenings, selectedCinema, DATES[selectedDate].label);
-    if (built.length > 0) return built;
-    const fallback = CINEMA_SESSIONS[selectedCinema] || DEFAULT_SESSIONS;
-    return fallback;
+    return buildSessionsForCinema(screenings, selectedCinema, DATES[selectedDate]);
   }, [hasAssignedShowtimes, screenings, selectedCinema, selectedDate]);
 
   const category = cinemaSessions[selectedCategory] || cinemaSessions[0] || null;
@@ -242,32 +243,25 @@ export default function SelectScreenPage() {
       return;
     }
 
-    const hallName = category.halls && category.halls.length > 0 ? category.halls[0] : undefined;
+    const timeDetail = category.timeDetails?.[selectedTime];
+    const hallName = timeDetail?.hall || (category.halls && category.halls.length > 0 ? category.halls[0] : "Hall 1");
+
+    const bookingState = {
+      date: DATES[selectedDate].full,
+      cinema: selectedCinema,
+      hall: hallName,
+      format: category.name,
+      time: selectedTime,
+    };
 
     if (!isAuthenticated) {
       openLoginPopup(() =>
-        navigate(`/select-seat/${id}`, {
-          state: {
-            date: DATES[selectedDate].full,
-            cinema: selectedCinema,
-            hall: hallName,
-            format: category.name,
-            time: selectedTime,
-          },
-        })
+        navigate(`/select-seat/${id}`, { state: bookingState })
       );
       return;
     }
 
-    navigate(`/select-seat/${id}`, {
-      state: {
-        date: DATES[selectedDate].full,
-        cinema: selectedCinema,
-        hall: hallName,
-        format: category.name,
-        time: selectedTime,
-      },
-    });
+    navigate(`/select-seat/${id}`, { state: bookingState });
   };
 
   if (!movie) {
@@ -302,7 +296,8 @@ export default function SelectScreenPage() {
             to="/movies"
             className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-cine-text transition-colors hover:text-cine-white"
           >
-            ← Back to Movies
+            <ArrowLeft size={14} />
+            <span>Back to Movies</span>
           </Link>
         </div>
 
@@ -414,9 +409,10 @@ export default function SelectScreenPage() {
                         </button>
                         <Link
                           to="/movies"
-                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-cine-text hover:text-white hover:bg-white/10 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-cine-text hover:text-white hover:bg-white/10 transition-colors"
                         >
-                          Browse Other Movies &rarr;
+                          <span>Browse Other Movies</span>
+                          <ArrowRight size={13} />
                         </Link>
                       </div>
                     </div>
@@ -629,9 +625,9 @@ export default function SelectScreenPage() {
                     </div>
                   ) : (
                     <div className="mt-4 rounded-xl border border-white/5 bg-cine-card/60 p-6 text-center">
-                      <p className="text-sm font-semibold text-white">No sessions for {selectedCinema}</p>
+                      <p className="text-sm font-semibold text-white">No sessions for {selectedCinema} on {DATES[selectedDate].label} ({DATES[selectedDate].full})</p>
                       <p className="mt-1 text-xs text-cine-text">
-                        Try selecting another cinema or date to view assigned showtimes.
+                        Try selecting another date or venue above to view assigned showtimes.
                       </p>
                     </div>
                   )

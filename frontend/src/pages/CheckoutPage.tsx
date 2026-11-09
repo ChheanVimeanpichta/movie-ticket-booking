@@ -395,7 +395,7 @@ export default function CheckoutPage() {
                   screeningTime: timeLabel,
                   seats: seats,
                   totalPrice: Number(total.toFixed(2)),
-                  paymentMethod: activeProvider?.name || selectedMethod?.name || "ABA Pay",
+                  paymentMethod: selectedMethod?.name || activeProvider?.name || "ABA Pay",
                   status: "confirmed",
                 };
 
@@ -451,6 +451,7 @@ export default function CheckoutPage() {
                   seats,
                   ticketCount,
                   total,
+                  paymentMethod: selectedMethod?.name || "ABA Pay",
                 });
               }}
               className={`mt-5 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white transition-all ${
