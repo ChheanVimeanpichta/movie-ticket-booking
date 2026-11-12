@@ -40,11 +40,13 @@ export default function ComingSoonDetailPage() {
         releaseDate: movie.releaseDate ?? "",
       });
       addNotification({
+        id: `reminder-${movie.id}`,
         title: "Release Reminder Set",
         description: `We'll alert you when "${movie.title}" releases on ${movie.releaseDate}.`,
         category: "Promotions",
         badge: "REMINDER",
         iconType: "bell",
+        link: `/coming-soon/${movie.id}`,
       });
     }
     setReminded(true);

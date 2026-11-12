@@ -2,11 +2,11 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { getOffers, subscribeOfferUpdates, OfferItem, DEFAULT_OFFERS } from "@/services/offerService";
+import { getOffers, getCachedOffers, subscribeOfferUpdates, OfferItem, DEFAULT_OFFERS } from "@/services/offerService";
 
 export default function Offers() {
-  const [offers, setOffers] = useState<OfferItem[]>(DEFAULT_OFFERS);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [offers, setOffers] = useState<OfferItem[]>(() => getCachedOffers());
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -14,7 +14,7 @@ export default function Offers() {
     async function loadOffers() {
       try {
         const data = await getOffers();
-        if (isMounted) {
+        if (isMounted && data && data.length > 0) {
           setOffers(data);
           setLoading(false);
         }
@@ -27,7 +27,10 @@ export default function Offers() {
 
     // Subscribe to live SSE updates when admin updates offers
     const unsubscribe = subscribeOfferUpdates(() => {
-      loadOffers();
+      if (isMounted) {
+        setOffers([...getCachedOffers()]);
+        loadOffers();
+      }
     });
 
     return () => {
@@ -89,11 +92,26 @@ export default function Offers() {
                   </span>
                 )}
               </div>
-              <div className="flex items-start gap-2 pt-3">
-                <span className="text-base leading-none">{offer.icon}</span>
-                <p className="text-sm font-bold leading-snug text-cine-white group-hover:text-cine-red transition-colors">
-                  {offer.caption || offer.title}
-                </p>
+              <div className="pt-3 px-1">
+                <div className="flex items-start gap-2">
+                  <span className="text-base leading-none shrink-0 mt-0.5">{offer.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold leading-snug text-cine-white group-hover:text-cine-red transition-colors truncate">
+                      {offer.caption || offer.title}
+                    </p>
+                    <p className="mt-1 text-xs text-cine-white/60 line-clamp-2 leading-relaxed font-body">
+                      {offer.intro || offer.caption || offer.title}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between border-t border-cine-border/60 pt-2.5 text-[11px] font-mono text-cine-white/50">
+                  <span>{offer.validity || "Limited Time"}</span>
+                  <span className="font-semibold text-cine-red group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                    <span>View Deal</span>
+                    <span>&rarr;</span>
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

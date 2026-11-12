@@ -79,8 +79,9 @@ export default function Header() {
           </div>
           <button
             onClick={() => {
+              const target = latestAlert.link || "/notifications";
               clearLatestAlert();
-              navigate("/notifications");
+              navigate(target);
             }}
             className="rounded-lg bg-[#f95738] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-orange-600 transition-colors"
           >

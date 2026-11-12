@@ -7,6 +7,7 @@ import {
   MapPin,
   Pause,
   PlusCircle,
+  Tag,
   Upload,
   Wallet,
   X,
@@ -75,6 +76,68 @@ function formatTime(totalSeconds: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+interface AppliedPromo {
+  code: string;
+  label: string;
+  discountAmount: number;
+  discountPercent?: number;
+}
+
+function evaluatePromoCode(code: string, currentSubtotal: number): AppliedPromo | null {
+  const clean = code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  if (!clean) return null;
+
+  if (clean.includes("STUDENT")) {
+    const discountAmount = Number((currentSubtotal * 0.4).toFixed(2));
+    return {
+      code: clean,
+      label: "Student Special (40% Off)",
+      discountAmount,
+      discountPercent: 40,
+    };
+  }
+
+  if (clean.includes("BOGO") || clean.includes("POPCORN")) {
+    const discountAmount = Math.min(3.50, currentSubtotal);
+    return {
+      code: clean,
+      label: "BOGO Popcorn Box Perk (-$3.50)",
+      discountAmount,
+    };
+  }
+
+  if (clean.includes("COMBO") || clean.includes("FEAST") || clean.includes("SNACK")) {
+    const discountAmount = Math.min(5.00, currentSubtotal);
+    return {
+      code: clean,
+      label: "Signature Feast Combo (-$5.00)",
+      discountAmount,
+    };
+  }
+
+  if (clean.includes("NIGHT") || clean.includes("OWL")) {
+    const discountAmount = Number((currentSubtotal * 0.3).toFixed(2));
+    return {
+      code: clean,
+      label: "Night Owl Special (30% Off)",
+      discountAmount,
+      discountPercent: 30,
+    };
+  }
+
+  if (clean.length >= 3) {
+    const discountAmount = Number((currentSubtotal * 0.2).toFixed(2));
+    return {
+      code: clean,
+      label: "Exclusive Offer Discount (20% Off)",
+      discountAmount,
+      discountPercent: 20,
+    };
+  }
+
+  return null;
+}
+
 export default function CheckoutPage() {
   const { id } = useParams<{ id: string }>();
   const locationState = useLocation().state as CheckoutState | null;
@@ -93,9 +156,72 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [showPromoInput, setShowPromoInput] = useState(false);
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
+  const [promoMessage, setPromoMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const { addNotification, addToBookingHistory } = useNotifications();
   const { user } = useAuth();
   const { getMovieById } = useMovies();
+
+  const seats = locationState?.seats ?? [];
+  const ticketCount = locationState?.ticketCount ?? seats.length;
+  const subtotal = locationState?.subtotal ?? ticketCount * SEAT_PRICE;
+  const serviceFee = locationState?.serviceFee ?? subtotal * SERVICE_FEE_RATE;
+
+  // Auto-detect claimed activePromo in localStorage
+  useEffect(() => {
+    try {
+      const activePromo = localStorage.getItem("activePromo");
+      if (activePromo && activePromo.trim()) {
+        const res = evaluatePromoCode(activePromo, subtotal);
+        if (res) {
+          setAppliedPromo(res);
+          setPromoCodeInput(activePromo.toUpperCase());
+          setShowPromoInput(true);
+          setPromoMessage({
+            type: "success",
+            text: `Offer ${res.code} applied! Saved $${res.discountAmount.toFixed(2)}.`,
+          });
+        }
+      }
+    } catch {}
+  }, [subtotal]);
+
+  const discount = appliedPromo ? Math.min(appliedPromo.discountAmount, subtotal) : 0;
+  const finalSubtotal = Math.max(0, subtotal - discount);
+  const total = Number((finalSubtotal + serviceFee).toFixed(2));
+
+  const handleApplyPromo = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setPromoMessage(null);
+    const result = evaluatePromoCode(promoCodeInput, subtotal);
+    if (result) {
+      setAppliedPromo(result);
+      try {
+        localStorage.setItem("activePromo", result.code);
+      } catch {}
+      setPromoMessage({
+        type: "success",
+        text: `Promo ${result.code} applied! Saved $${result.discountAmount.toFixed(2)}.`,
+      });
+    } else {
+      setPromoMessage({
+        type: "error",
+        text: "Invalid promo code. Please enter a valid offer voucher.",
+      });
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCodeInput("");
+    setPromoMessage(null);
+    try {
+      localStorage.removeItem("activePromo");
+    } catch {}
+  };
 
   useEffect(() => {
     if (!proofFile) {
@@ -120,12 +246,6 @@ export default function CheckoutPage() {
     getMovieById(id || "") ||
     nowShowing.find((m) => m.id === id) ||
     nowShowingGrid.find((m) => m.id === id);
-
-  const seats = locationState?.seats ?? [];
-  const ticketCount = locationState?.ticketCount ?? seats.length;
-  const subtotal = locationState?.subtotal ?? ticketCount * SEAT_PRICE;
-  const serviceFee = locationState?.serviceFee ?? subtotal * SERVICE_FEE_RATE;
-  const total = locationState?.total ?? subtotal + serviceFee;
 
   const dateLabel = locationState?.date || "Today";
   const timeLabel = locationState?.time || "18:30";
@@ -297,6 +417,19 @@ export default function CheckoutPage() {
                     ${subtotal.toFixed(2)}
                   </span>
                 </div>
+
+                {appliedPromo && discount > 0 && (
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                      <Tag size={12} />
+                      <span>{appliedPromo.label}</span>
+                    </span>
+                    <span className="text-xs font-bold text-emerald-400 font-mono">
+                      - ${discount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs text-cine-text">
                     Internet Service Fee
@@ -308,7 +441,14 @@ export default function CheckoutPage() {
               </div>
 
               <div className="mt-4 flex items-center justify-between border-t border-cine-border pt-4">
-                <span className="text-sm font-bold text-cine-white">Total</span>
+                <div>
+                  <span className="text-sm font-bold text-cine-white">Total</span>
+                  {appliedPromo && discount > 0 && (
+                    <span className="ml-2 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-emerald-300">
+                      SAVED ${discount.toFixed(2)}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xl font-black text-cine-red [text-shadow:0_0_14px_rgba(228,22,42,0.5)]">
                   ${total.toFixed(2)}
                 </span>
@@ -361,10 +501,91 @@ export default function CheckoutPage() {
               })}
             </div>
 
-            <button className="mt-5 flex items-center gap-1.5 text-xs font-medium text-cine-red transition-opacity hover:opacity-80">
-              <PlusCircle size={13} />
-              Have a promo code or gift card?
-            </button>
+            {/* Promo Code / Voucher Box */}
+            {!showPromoInput && !appliedPromo ? (
+              <button
+                type="button"
+                onClick={() => setShowPromoInput(true)}
+                className="mt-5 flex items-center gap-1.5 text-xs font-medium text-cine-red transition-opacity hover:opacity-80"
+              >
+                <PlusCircle size={13} />
+                <span>Have a promo code or gift card?</span>
+              </button>
+            ) : (
+              <div className="mt-5 rounded-xl border border-cine-border bg-black/50 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
+                    <Tag size={13} className="text-cine-red" />
+                    <span>Offer / Promo Voucher</span>
+                  </span>
+                  {!appliedPromo && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPromoInput(false);
+                        setPromoMessage(null);
+                      }}
+                      className="text-zinc-500 hover:text-zinc-300 text-xs font-mono"
+                    >
+                      Close
+                    </button>
+                  )}
+                </div>
+
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between rounded-lg bg-emerald-950/40 border border-emerald-500/40 p-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <Check size={14} className="text-emerald-400" />
+                        <span className="font-mono text-xs font-black text-emerald-300">
+                          {appliedPromo.code}
+                        </span>
+                        <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-mono font-bold text-emerald-300">
+                          SAVED ${discount.toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-400/90 truncate mt-0.5">
+                        {appliedPromo.label}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="shrink-0 text-xs text-zinc-400 hover:text-white underline ml-3 font-mono"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleApplyPromo} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={promoCodeInput}
+                      onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                      placeholder="e.g. STUDENT40, BOGOPOPCORN"
+                      className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-xs text-white uppercase placeholder:text-zinc-600 focus:border-cine-red focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!promoCodeInput.trim()}
+                      className="rounded-lg bg-cine-red px-4 py-2 font-mono text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50 transition"
+                    >
+                      Apply
+                    </button>
+                  </form>
+                )}
+
+                {promoMessage && (
+                  <p
+                    className={`text-[11px] font-medium ${
+                      promoMessage.type === "success" ? "text-emerald-400" : "text-red-400"
+                    }`}
+                  >
+                    {promoMessage.text}
+                  </p>
+                )}
+              </div>
+            )}
 
             {conflictError && (
               <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
@@ -432,14 +653,25 @@ export default function CheckoutPage() {
                 setPaid(true);
                 setIsSubmitting(false);
 
+                const nowMs = Date.now();
+                const promoSuffix = appliedPromo ? ` (Promo: ${appliedPromo.code})` : "";
                 addNotification({
+                  id: `booking-${createdBookingId}`,
                   title: "Booking Confirmed",
-                  description: `Your tickets for ${movie.title} (${formatLabel}) have been confirmed. Seats: ${
+                  description: `Your tickets for "${movie.title}" (booked just now) have been confirmed. Showtime: ${dateLabel} at ${timeLabel}. Seats: ${
                     seats.length > 0 ? seats.join(", ") : "—"
-                  }. Enjoy the show!`,
+                  }. Total: $${total.toFixed(2)}${promoSuffix}.`,
                   category: "Bookings",
-                  badge: "Ticket",
+                  badge: "TICKET CONFIRMED",
                   iconType: "ticket",
+                  link: `/ticket/${createdBookingId}`,
+                  bookingId: createdBookingId,
+                  createdAt: nowMs,
+                  movieTitle: movie.title,
+                  seats,
+                  total,
+                  showtimeDate: dateLabel,
+                  showtimeTime: timeLabel,
                 });
                 addToBookingHistory({
                   id: createdBookingId,
@@ -452,6 +684,8 @@ export default function CheckoutPage() {
                   ticketCount,
                   total,
                   paymentMethod: selectedMethod?.name || "ABA Pay",
+                  createdAt: nowMs,
+                  bookedAt: "Just now",
                 });
               }}
               className={`mt-5 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-white transition-all ${

@@ -252,6 +252,7 @@ export default function SelectScreenPage() {
       hall: hallName,
       format: category.name,
       time: selectedTime,
+      capacity: timeDetail?.capacity || (category as any)?.capacity,
     };
 
     if (!isAuthenticated) {

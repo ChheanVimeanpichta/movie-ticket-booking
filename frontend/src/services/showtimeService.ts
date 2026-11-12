@@ -16,6 +16,7 @@ export interface AssignedScreening {
   format: string;
   price: number;
   soldOut?: boolean;
+  capacity?: number;
 }
 
 export interface SessionTimeDetail {
@@ -24,6 +25,8 @@ export interface SessionTimeDetail {
   price: number;
   soldOut: boolean;
   screeningId?: string;
+  capacity?: number;
+  format?: string;
 }
 
 export interface SessionCategory {
@@ -33,6 +36,7 @@ export interface SessionCategory {
   soldOut: string[];
   halls?: string[];
   timeDetails?: Record<string, SessionTimeDetail>;
+  capacity?: number;
 }
 
 export interface DateInfo {
@@ -47,7 +51,14 @@ export interface VenueData {
   id: string;
   name: string;
   address?: string;
-  halls?: Array<{ id: string; name: string; screenType: string }>;
+  halls?: Array<{
+    id: string;
+    name: string;
+    screenType: string;
+    capacity?: number;
+    soundSystem?: string;
+    status?: string;
+  }>;
 }
 
 let cachedVenues: VenueData[] | null = null;
@@ -458,6 +469,8 @@ export function buildSessionsForCinema(
       price: s.price,
       soldOut: Boolean(s.soldOut),
       screeningId: s.id,
+      capacity: (s as any).capacity || (s as any).seatingCapacity,
+      format: s.format,
     };
   });
 
