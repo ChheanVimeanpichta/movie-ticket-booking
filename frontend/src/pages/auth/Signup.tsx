@@ -1,6 +1,6 @@
 import { useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, Phone, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Signup() {
@@ -47,7 +47,22 @@ export default function Signup() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-2xl border border-cine-border bg-cine-card p-8">
+        <div className="relative w-full max-w-md rounded-2xl border border-cine-border bg-cine-card p-8 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/");
+              }
+            }}
+            aria-label="Close signup form"
+            className="absolute right-4 top-4 rounded-xl p-2 text-cine-text hover:text-cine-white hover:bg-zinc-800/80 transition-colors"
+          >
+            <X size={18} />
+          </button>
+
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-cine-white">Create Account</h2>
             <p className="text-sm text-cine-text mt-1">Join CineStar and book your seats.</p>

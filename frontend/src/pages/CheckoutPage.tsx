@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import {
+  AlertCircle,
   ArrowLeft,
   Check,
+  CheckCircle2,
+  Loader2,
   Lock,
   MapPin,
   Pause,
@@ -20,6 +23,7 @@ import type { GridMovie } from "@/data/movies";
 import { useNotifications } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { useMovies } from "@/context/MovieContext";
+import { validatePaymentReceipt } from "@/utils/paymentReceiptValidator";
 
 type MovieData = (Movie | GridMovie) & {
   synopsis?: string;
@@ -51,22 +55,22 @@ const PAYMENT_METHODS = [
     id: "aba",
     name: "ABA Pay",
     modalTitle: "ABA Mobile",
-    logoClass: "bg-white text-black",
-    logoText: "ABA",
+    logoUrl: "/banks/aba.png",
+    containerClass: "bg-[#005d76]",
   },
   {
     id: "acleda",
     name: "ACLEDA",
     modalTitle: "ACLEDA Mobile",
-    logoClass: "bg-[#1B4FA0] text-white",
-    logoText: "ACLEDA",
+    logoUrl: "/banks/acleda.png",
+    containerClass: "bg-white",
   },
   {
     id: "wing",
     name: "Wing",
     modalTitle: "Wing Mobile",
-    logoClass: "bg-[#14A44D] text-white",
-    logoText: "Wing",
+    logoUrl: "/banks/wing.png",
+    containerClass: "bg-[#85c441]",
   },
 ];
 
@@ -150,6 +154,9 @@ export default function CheckoutPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] =
     useState<(typeof PAYMENT_METHODS)[number] | null>(null);
+  const [isVerifyingReceipt, setIsVerifyingReceipt] = useState(false);
+  const [receiptValidationError, setReceiptValidationError] = useState<string | null>(null);
+  const [receiptValidationSuccess, setReceiptValidationSuccess] = useState(false);
   const [paid, setPaid] = useState(false);
   const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
   const [conflictError, setConflictError] = useState<string | null>(null);
@@ -259,10 +266,49 @@ export default function CheckoutPage() {
 
   const proofSubmitted = selectedMethod !== null;
 
+  async function handleReceiptFileChange(file: File | null) {
+    setProofFile(file);
+    setReceiptValidationError(null);
+    setReceiptValidationSuccess(false);
+
+    if (!file) return;
+    if (!activeProvider) return;
+
+    setIsVerifyingReceipt(true);
+    try {
+      const result = await validatePaymentReceipt(
+        file,
+        activeProvider.id as "aba" | "acleda" | "wing"
+      );
+
+      if (!result.isValid) {
+        setReceiptValidationError(
+          result.errorMessage ||
+            "Please upload a valid ABA, ACLEDA, or WING payment receipt."
+        );
+        setReceiptValidationSuccess(false);
+      } else {
+        setReceiptValidationError(null);
+        setReceiptValidationSuccess(true);
+      }
+    } catch (err: any) {
+      console.warn("Error running payment receipt validation:", err);
+      setReceiptValidationError(
+        "Failed to validate receipt image. Please ensure the image is clear and try again."
+      );
+      setReceiptValidationSuccess(false);
+    } finally {
+      setIsVerifyingReceipt(false);
+    }
+  }
+
   function openModal(method: (typeof PAYMENT_METHODS)[number]) {
     setActiveProvider(method);
     setModalStep("qr");
     setProofFile(null);
+    setReceiptValidationError(null);
+    setReceiptValidationSuccess(false);
+    setIsVerifyingReceipt(false);
   }
 
   function closeModal() {
@@ -488,11 +534,15 @@ export default function CheckoutPage() {
                         : "border-cine-border bg-cine-card-hover hover:border-cine-red/60"
                     }`}
                   >
-                    <span
-                      className={`flex h-11 w-11 items-center justify-center rounded-lg text-[10px] font-black ${method.logoClass}`}
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden p-1 shadow-inner ${method.containerClass}`}
                     >
-                      {method.logoText}
-                    </span>
+                      <img
+                        src={method.logoUrl}
+                        alt={method.name}
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
                     <span className="text-[11px] font-semibold text-cine-white">
                       {method.name}
                     </span>
@@ -618,6 +668,8 @@ export default function CheckoutPage() {
                   totalPrice: Number(total.toFixed(2)),
                   paymentMethod: selectedMethod?.name || activeProvider?.name || "ABA Pay",
                   status: "confirmed",
+                  proofSubmitted: true,
+                  proofFileName: proofFile?.name || "receipt.png",
                 };
 
                 let createdBookingId = `BK-${Date.now().toString().slice(-6)}`;
@@ -649,14 +701,16 @@ export default function CheckoutPage() {
                   console.warn("Failed to persist booking to MySQL backend:", err);
                 }
 
-                setConfirmedBookingId(createdBookingId);
+                const cleanBookingId = String(createdBookingId).replace(/^#/, "");
+
+                setConfirmedBookingId(cleanBookingId);
                 setPaid(true);
                 setIsSubmitting(false);
 
                 const nowMs = Date.now();
                 const promoSuffix = appliedPromo ? ` (Promo: ${appliedPromo.code})` : "";
                 addNotification({
-                  id: `booking-${createdBookingId}`,
+                  id: `booking-${cleanBookingId}`,
                   title: "Booking Confirmed",
                   description: `Your tickets for "${movie.title}" (booked just now) have been confirmed. Showtime: ${dateLabel} at ${timeLabel}. Seats: ${
                     seats.length > 0 ? seats.join(", ") : "—"
@@ -664,8 +718,8 @@ export default function CheckoutPage() {
                   category: "Bookings",
                   badge: "TICKET CONFIRMED",
                   iconType: "ticket",
-                  link: `/ticket/${createdBookingId}`,
-                  bookingId: createdBookingId,
+                  link: `/ticket/${cleanBookingId}`,
+                  bookingId: cleanBookingId,
                   createdAt: nowMs,
                   movieTitle: movie.title,
                   seats,
@@ -674,7 +728,7 @@ export default function CheckoutPage() {
                   showtimeTime: timeLabel,
                 });
                 addToBookingHistory({
-                  id: createdBookingId,
+                  id: cleanBookingId,
                   movieTitle: movie.title,
                   poster: movie.poster,
                   cinema: cinemaLabel,
@@ -735,9 +789,20 @@ export default function CheckoutPage() {
 
             {modalStep === "qr" ? (
               <>
-                <h3 className="text-center text-lg font-black text-cine-white">
-                  {activeProvider.modalTitle}
-                </h3>
+                <div className="flex items-center justify-center gap-2.5">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden p-0.5 ${activeProvider.containerClass}`}
+                  >
+                    <img
+                      src={activeProvider.logoUrl}
+                      alt={activeProvider.name}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <h3 className="text-center text-lg font-black text-cine-white">
+                    {activeProvider.modalTitle}
+                  </h3>
+                </div>
                 <p className="mt-1 text-center text-xs text-cine-text">
                   Scan the QR code below to pay
                 </p>
@@ -772,7 +837,13 @@ export default function CheckoutPage() {
                   {activeProvider.name} &bull; ${total.toFixed(2)}
                 </p>
                 <label
-                  className="relative mt-5 flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-cine-border bg-cine-bg p-4 text-center transition-colors hover:border-cine-red/60"
+                  className={`relative mt-5 flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed p-4 text-center transition-colors ${
+                    receiptValidationError
+                      ? "border-red-500/60 bg-red-500/5"
+                      : receiptValidationSuccess
+                      ? "border-emerald-500/60 bg-emerald-500/5"
+                      : "border-cine-border bg-cine-bg hover:border-cine-red/60"
+                  }`}
                 >
                   {previewUrl ? (
                     <div className="flex flex-col items-center gap-2">
@@ -792,39 +863,58 @@ export default function CheckoutPage() {
                         Upload proof of payment
                       </span>
                       <span className="text-[11px] text-cine-text">
-                        Upload your payment screenshot
+                        Accepts JPG, JPEG, PNG (max 5 MB)
                       </span>
                     </>
                   )}
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                     className="hidden"
                     onChange={(e) =>
-                      setProofFile(e.target.files?.[0] ?? null)
+                      handleReceiptFileChange(e.target.files?.[0] ?? null)
                     }
                   />
                 </label>
-                {proofFile && (
-                  <p className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-cine-text-light">
-                    <Check size={14} className="text-cine-red" />
-                    {proofFile.name}
-                  </p>
+
+                {isVerifyingReceipt && (
+                  <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-cine-border bg-cine-card p-3 text-xs text-sky-400">
+                    <Loader2 size={16} className="animate-spin text-sky-400 shrink-0" />
+                    <span>Verifying {activeProvider.name} transaction receipt...</span>
+                  </div>
                 )}
+
+                {!isVerifyingReceipt && receiptValidationError && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
+                    <div className="flex-1 text-left">
+                      <p className="font-bold text-red-300">Invalid Payment Receipt</p>
+                      <p className="mt-0.5 text-[11px] text-red-200">{receiptValidationError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {!isVerifyingReceipt && receiptValidationSuccess && proofFile && (
+                  <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-xs font-medium text-emerald-300">
+                    <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
+                    <span className="truncate">Valid {activeProvider.name} receipt verified &bull; {proofFile.name}</span>
+                  </div>
+                )}
+
                 <button
-                  disabled={!proofFile}
+                  disabled={!proofFile || isVerifyingReceipt || !receiptValidationSuccess}
                   onClick={() => {
                     setSelectedMethod(activeProvider);
                     closeModal();
                   }}
                   className={`mt-5 w-full rounded-xl py-3 text-sm font-bold text-white transition-all ${
-                    proofFile
+                    proofFile && !isVerifyingReceipt && receiptValidationSuccess
                       ? "bg-gradient-to-b from-[#E4162A] to-[#9C0F1F] shadow-[0_0_20px_rgba(228,22,42,0.4)]"
-                      : "cursor-not-allowed bg-cine-red/40"
+                      : "cursor-not-allowed bg-cine-red/40 opacity-70"
                   }`}
                 >
-                  Submit Proof
+                  {isVerifyingReceipt ? "Verifying..." : "Submit Proof"}
                 </button>
               </>
             )}

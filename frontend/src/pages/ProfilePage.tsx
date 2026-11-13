@@ -26,20 +26,20 @@ const PAYMENT_METHODS = [
   {
     id: "aba",
     name: "ABA Pay",
-    logoClass: "bg-white text-black",
-    logoText: "ABA",
+    logoUrl: "/banks/aba.png",
+    containerClass: "bg-[#005d76]",
   },
   {
     id: "acleda",
     name: "ACLEDA",
-    logoClass: "bg-[#1B4FA0] text-white",
-    logoText: "ACLEDA",
+    logoUrl: "/banks/acleda.png",
+    containerClass: "bg-white",
   },
   {
     id: "wing",
     name: "Wing",
-    logoClass: "bg-[#14A44D] text-white",
-    logoText: "Wing",
+    logoUrl: "/banks/wing.png",
+    containerClass: "bg-[#85c441]",
   },
 ];
 
@@ -680,11 +680,15 @@ export default function ProfilePage() {
                   key={method.id}
                   className="flex flex-col items-center gap-3 rounded-xl border border-cine-border bg-cine-card-hover p-4"
                 >
-                  <span
-                    className={`flex h-11 w-11 items-center justify-center rounded-lg text-[10px] font-black ${method.logoClass}`}
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden p-1 shadow-inner ${method.containerClass}`}
                   >
-                    {method.logoText}
-                  </span>
+                    <img
+                      src={method.logoUrl}
+                      alt={method.name}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
                   <span className="text-[11px] font-semibold text-cine-white">
                     {method.name}
                   </span>

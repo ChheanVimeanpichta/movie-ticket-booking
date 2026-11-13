@@ -68,12 +68,19 @@ export default function Header() {
     <header className="sticky top-0 z-50 border-b border-cine-border bg-cine-bg/95 backdrop-blur-md">
       {/* Toast Alert for New Notification */}
       {latestAlert && (
-        <div className="fixed top-20 right-4 z-50 flex max-w-sm items-center gap-3 rounded-2xl border border-[#f95738]/50 bg-[#161619] p-4 text-white shadow-2xl shadow-orange-950/40">
+        <div className="fixed top-20 right-4 z-50 flex max-w-sm items-center gap-3 rounded-2xl border border-[#f95738]/50 bg-[#161619] p-4 text-white shadow-2xl shadow-orange-950/40 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f95738]/20 text-[#f95738]">
             <Bell size={18} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#f95738]">New Notification</p>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#f95738]">
+                {latestAlert.badge || "New Notification"}
+              </span>
+              <span className="text-[10px] text-zinc-500 font-mono">
+                • {latestAlert.timestamp || "Just now"}
+              </span>
+            </div>
             <p className="text-xs font-bold text-white truncate">{latestAlert.title}</p>
             <p className="text-[11px] text-zinc-400 line-clamp-1">{latestAlert.description}</p>
           </div>
@@ -83,13 +90,13 @@ export default function Header() {
               clearLatestAlert();
               navigate(target);
             }}
-            className="rounded-lg bg-[#f95738] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-orange-600 transition-colors"
+            className="rounded-lg bg-[#f95738] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-orange-600 transition-colors shrink-0"
           >
-            View
+            {latestAlert.badge === "WELCOME" ? "Sign In" : "View"}
           </button>
           <button
             onClick={clearLatestAlert}
-            className="text-zinc-500 hover:text-white"
+            className="text-zinc-500 hover:text-white shrink-0 ml-1"
           >
             <X size={14} />
           </button>

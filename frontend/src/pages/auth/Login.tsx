@@ -1,6 +1,6 @@
 import { useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Lock, Eye, EyeOff } from "lucide-react";
+import { User, Lock, Eye, EyeOff, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
@@ -45,7 +45,22 @@ export default function Login() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-2xl border border-cine-border bg-cine-card p-8">
+        <div className="relative w-full max-w-md rounded-2xl border border-cine-border bg-cine-card p-8 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/");
+              }
+            }}
+            aria-label="Close login form"
+            className="absolute right-4 top-4 rounded-xl p-2 text-cine-text hover:text-cine-white hover:bg-zinc-800/80 transition-colors"
+          >
+            <X size={18} />
+          </button>
+
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-cine-white">Welcome Back</h2>
             <p className="text-sm text-cine-text mt-1">Your cinematic journey continues.</p>

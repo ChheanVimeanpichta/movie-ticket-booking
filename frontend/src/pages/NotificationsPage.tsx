@@ -13,6 +13,7 @@ import {
   RefreshCw,
   User,
   Film,
+  Trash2,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -103,6 +104,8 @@ export default function NotificationsPage() {
     bookingHistory,
     markAllAsRead,
     markAsRead,
+    dismissNotification,
+    clearAllNotifications,
     refreshNotifications,
     isLoading,
   } = useNotifications();
@@ -213,17 +216,30 @@ export default function NotificationsPage() {
             </p>
           </div>
 
-          <button
-            onClick={() => refreshNotifications()}
-            title="Refresh notifications"
-            className="self-start sm:self-center flex items-center gap-2 rounded-xl border border-zinc-800 bg-[#141416] px-3.5 py-2 text-xs font-mono font-medium text-zinc-300 hover:text-white hover:border-[#f95738]/50 transition-all"
-          >
-            <RefreshCw
-              size={13}
-              className={`text-[#f95738] ${isLoading ? "animate-spin" : ""}`}
-            />
-            <span>{isLoading ? "Syncing..." : "Sync Live"}</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            {activeTab !== "Booking History" && filteredNotifications.length > 0 && (
+              <button
+                onClick={() => clearAllNotifications()}
+                title="Clear all notifications"
+                className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-[#141416] px-3 py-2 text-xs font-mono font-medium text-zinc-400 hover:text-red-400 hover:border-red-900/50 transition-all"
+              >
+                <Trash2 size={13} />
+                <span>Clear All</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => refreshNotifications()}
+              title="Refresh notifications"
+              className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-[#141416] px-3.5 py-2 text-xs font-mono font-medium text-zinc-300 hover:text-white hover:border-[#f95738]/50 transition-all"
+            >
+              <RefreshCw
+                size={13}
+                className={`text-[#f95738] ${isLoading ? "animate-spin" : ""}`}
+              />
+              <span>{isLoading ? "Syncing..." : "Sync Live"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Row */}
@@ -434,9 +450,24 @@ export default function NotificationsPage() {
                           {item.title}
                         </h2>
                       </div>
-                      <span className="shrink-0 font-mono text-xs text-[#f95738] opacity-90">
-                        {formatRelativeTime(resolveItemCreatedAt(item), item.timestamp)}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono text-xs text-[#f95738] opacity-90">
+                          {item.id === "welcome-guest"
+                            ? "Just now"
+                            : formatRelativeTime(resolveItemCreatedAt(item), item.timestamp)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dismissNotification(item.id);
+                          }}
+                          title="Remove alert"
+                          className="p-1 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800/80 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
 
                     <p className="mt-1.5 text-sm text-zinc-400 leading-relaxed font-body">
@@ -455,6 +486,8 @@ export default function NotificationsPage() {
                           <span>
                             {item.category === "Bookings"
                               ? "View Ticket"
+                              : item.badge === "WELCOME"
+                              ? "Sign In"
                               : item.iconType === "offer"
                               ? "Claim Offer"
                               : "View Details"}
