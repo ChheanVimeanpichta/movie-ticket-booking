@@ -63,7 +63,7 @@ jobs:
             fi
             sudo docker rm -f api-rest || true
             sudo docker build -t api-rest .
-            sudo docker run -d --name api-rest -e PORT=3000 -p 3000:3000 api-rest
+            sudo docker run -d --name api-rest -e PORT=3000 -e DATABASE_URL='${{ secrets.DATABASE_URL }}' -p 3000:3000 api-rest
             sudo docker image prune -f
 
       - name: Send Telegram Notification (Success)
