@@ -243,7 +243,14 @@ export default function SeatSelectionPage() {
     async function resolveFromAdminHalls() {
       try {
         const venues = await fetchAdminVenues();
-        for (const v of venues) {
+        const matchedVenue = venues.find(
+          (v) => v.name.toLowerCase() === cinemaLabel.toLowerCase()
+        );
+        const searchVenues = matchedVenue
+          ? [matchedVenue, ...venues.filter((v) => v !== matchedVenue)]
+          : venues;
+
+        for (const v of searchVenues) {
           if (v.halls && Array.isArray(v.halls)) {
             const match = v.halls.find(
               (h) =>

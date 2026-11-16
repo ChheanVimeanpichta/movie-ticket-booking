@@ -117,6 +117,42 @@ export function resolveVenue(
   const rawHall = (s.hall || "").trim();
   const searchStr = `${s.theaterId || ""} ${rawHall} ${rawVenue} ${s.venueId || ""}`.toLowerCase();
 
+  // 1. Direct venue ID match from live Admin / DB venues
+  if (s.venueId && venueMap.has(s.venueId)) {
+    const vName = venueMap.get(s.venueId)!;
+    return {
+      venueId: s.venueId,
+      venueName: vName,
+      hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
+    };
+  }
+
+  // 2. Direct hall ID match from live Admin / DB halls
+  if (s.theaterId && hallVenueMap.has(s.theaterId)) {
+    const vName = hallVenueMap.get(s.theaterId)!;
+    const foundVenue = venues.find((v) => v.name === vName);
+    return {
+      venueId: foundVenue?.id || s.venueId || "v-001",
+      venueName: vName,
+      hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
+    };
+  }
+
+  // 3. Exact or case-insensitive match against registered Admin venues
+  if (rawVenue) {
+    const matchedVenue = venues.find(
+      (v) => v.name && v.name.toLowerCase() === rawVenue.toLowerCase()
+    );
+    if (matchedVenue) {
+      return {
+        venueId: matchedVenue.id,
+        venueName: matchedVenue.name,
+        hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
+      };
+    }
+  }
+
+  // Helper for normalizing legacy static aliases
   function toCanonical(name: string, id?: string) {
     const l = `${name} ${id || ""}`.toLowerCase();
     if (l.includes("riverside") || id === "v-002" || l.includes("th-hall-5") || l.includes("th-hall-6") || l.includes("hall 5") || l.includes("hall 6")) {
@@ -134,42 +170,26 @@ export function resolveVenue(
     return null;
   }
 
-  // Check direct matches first
-  const matched = toCanonical(rawVenue, s.venueId) || toCanonical("", s.theaterId) || toCanonical(searchStr);
-  if (matched) {
+  // 4. Check canonical aliases for mock data
+  const canonical = toCanonical(rawVenue, s.venueId) || toCanonical("", s.theaterId) || toCanonical(searchStr);
+  if (canonical) {
     return {
-      venueId: matched.venueId,
-      venueName: matched.venueName,
+      venueId: canonical.venueId,
+      venueName: canonical.venueName,
       hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
     };
   }
 
-  // Lookup in venueMap
-  if (s.venueId && venueMap.has(s.venueId)) {
-    const vName = venueMap.get(s.venueId)!;
-    const can = toCanonical(vName, s.venueId);
-    if (can) {
-      return {
-        venueId: can.venueId,
-        venueName: can.venueName,
-        hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
-      };
-    }
+  // 5. If a custom venue name was provided that is not a hall name, preserve it dynamically
+  if (rawVenue && !isHallName(rawVenue)) {
+    return {
+      venueId: s.venueId || `v-${rawVenue.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      venueName: rawVenue,
+      hallName: rawHall || "Hall 1",
+    };
   }
 
-  // Lookup in hallVenueMap
-  if (s.theaterId && hallVenueMap.has(s.theaterId)) {
-    const vName = hallVenueMap.get(s.theaterId)!;
-    const can = toCanonical(vName);
-    if (can) {
-      return {
-        venueId: can.venueId,
-        venueName: can.venueName,
-        hallName: rawHall || (isHallName(rawVenue) ? rawVenue : "Hall 1"),
-      };
-    }
-  }
-
+  // 6. Fallback to default registered venue
   const defaultVenue = venues.find((v) => v.name && !isHallName(v.name))?.name || "CineStar Downtown";
   const defaultVenueId = venues.find((v) => v.id)?.id || "v-001";
   return {

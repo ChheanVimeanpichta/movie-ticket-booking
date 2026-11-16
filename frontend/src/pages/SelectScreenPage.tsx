@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Star, Clock, Calendar, ChevronDown, ShieldAlert, AlertTriangle, RefreshCw, Building2, ArrowLeft, ArrowRight } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -11,6 +11,7 @@ import { useMovies } from "@/context/MovieContext";
 import {
   useMovieShowtimes,
   buildSessionsForCinema,
+  fetchAdminVenues,
   isHallName,
   type SessionCategory,
   type DateInfo,
@@ -171,6 +172,25 @@ export default function SelectScreenPage() {
   const [showLogModal, setShowLogModal] = useState(false);
   const cinemaRef = useRef<HTMLDivElement>(null);
 
+  const [searchParams] = useSearchParams();
+  const queryCinema = searchParams.get("cinema");
+  const [adminVenues, setAdminVenues] = useState<string[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchAdminVenues().then((data) => {
+      if (isMounted && Array.isArray(data) && data.length > 0) {
+        const names = data
+          .map((v) => v.name)
+          .filter((name): name is string => Boolean(name) && !isHallName(name));
+        setAdminVenues(names);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const movie: MovieData | undefined =
     (id ? (getMovieById(id) as MovieData) : undefined) ||
     nowShowing.find((m) => m.id === id) ||
@@ -190,17 +210,31 @@ export default function SelectScreenPage() {
     assignedCinemas.forEach((c) => {
       if (Boolean(c) && !isHallName(c)) list.add(c);
     });
+    adminVenues.forEach((c) => {
+      if (Boolean(c) && !isHallName(c)) list.add(c);
+    });
     CINEMA_OPTIONS.forEach((c) => list.add(c));
     return Array.from(list);
-  }, [assignedCinemas]);
+  }, [assignedCinemas, adminVenues]);
 
-  const [selectedCinema, setSelectedCinema] = useState(availableCinemas[0] || "CineStar Downtown");
+  const [selectedCinema, setSelectedCinema] = useState<string>(() => {
+    if (queryCinema) return queryCinema;
+    return "CineStar Downtown";
+  });
 
   useEffect(() => {
-    if (availableCinemas.length > 0 && !availableCinemas.includes(selectedCinema)) {
+    if (queryCinema && availableCinemas.includes(queryCinema)) {
+      setSelectedCinema(queryCinema);
+      return;
+    }
+    if (assignedCinemas.length > 0) {
+      if (!assignedCinemas.includes(selectedCinema)) {
+        setSelectedCinema(assignedCinemas[0]);
+      }
+    } else if (availableCinemas.length > 0 && !availableCinemas.includes(selectedCinema)) {
       setSelectedCinema(availableCinemas[0]);
     }
-  }, [availableCinemas, selectedCinema]);
+  }, [assignedCinemas, availableCinemas, queryCinema]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -482,10 +516,10 @@ export default function SelectScreenPage() {
 
                 <div className="relative mt-3" ref={cinemaRef}>
                   <button
-                    onClick={() => hasAssignedShowtimes && setCinemaOpen(!cinemaOpen)}
-                    disabled={!hasAssignedShowtimes}
+                    onClick={() => (availableCinemas.length > 1 || hasAssignedShowtimes) && setCinemaOpen(!cinemaOpen)}
+                    disabled={availableCinemas.length <= 1 && !hasAssignedShowtimes}
                     className={`flex w-full cursor-pointer items-center justify-between rounded-xl border bg-cine-card px-5 py-4 transition-colors ${
-                      !hasAssignedShowtimes
+                      availableCinemas.length <= 1 && !hasAssignedShowtimes
                         ? "border-red-500/30 opacity-75 cursor-not-allowed"
                         : "border-cine-border hover:bg-cine-card-hover"
                     }`}
@@ -503,7 +537,7 @@ export default function SelectScreenPage() {
                         </p>
                       </div>
                     </div>
-                    {hasAssignedShowtimes && (
+                    {(availableCinemas.length > 1 || hasAssignedShowtimes) && (
                       <ChevronDown
                         size={16}
                         className={`text-cine-text transition-transform ${
@@ -512,7 +546,7 @@ export default function SelectScreenPage() {
                       />
                     )}
                   </button>
-                  {cinemaOpen && hasAssignedShowtimes && (
+                  {cinemaOpen && (
                     <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-cine-border bg-cine-card shadow-2xl max-h-60 overflow-y-auto">
                       {availableCinemas.map((opt) => (
                         <button
