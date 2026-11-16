@@ -7,7 +7,7 @@ import { nowShowing, nowShowingGrid } from "@/data/movies";
 import type { Movie } from "@/data/movies";
 import type { GridMovie } from "@/data/movies";
 import { useMovies } from "@/context/MovieContext";
-import { fetchAdminVenues } from "@/services/showtimeService";
+import { fetchAdminVenues, useMovieShowtimes } from "@/services/showtimeService";
 
 type MovieData = (Movie | GridMovie) & { synopsis?: string; rating?: string; runtime?: string; landscape?: string };
 
@@ -218,6 +218,8 @@ export default function SeatSelectionPage() {
     format?: string;
     time?: string;
     capacity?: number;
+    price?: number;
+    ticketPrice?: number;
   } | null;
 
   const movie: MovieData | undefined =
@@ -225,11 +227,25 @@ export default function SeatSelectionPage() {
     nowShowing.find((m) => m.id === id) ||
     nowShowingGrid.find((m) => m.id === id);
 
+  const { screenings } = useMovieShowtimes(id, movie?.title);
+
   const initialFormat = locationState?.format || "IMAX 2D";
   const timeLabel = locationState?.time || "18:30";
   const cinemaLabel = locationState?.cinema || "CineStar Downtown";
   const hallLabel = locationState?.hall || "Hall 1";
   const dateLabel = locationState?.date || "Today";
+
+  const passedPrice =
+    locationState?.price !== undefined && !isNaN(Number(locationState.price)) && Number(locationState.price) > 0
+      ? Number(locationState.price)
+      : locationState?.ticketPrice !== undefined && !isNaN(Number(locationState.ticketPrice)) && Number(locationState.ticketPrice) > 0
+        ? Number(locationState.ticketPrice)
+        : undefined;
+
+  const [ticketPrice, setTicketPrice] = useState<number>(() => {
+    if (passedPrice !== undefined) return passedPrice;
+    return SEAT_PRICE;
+  });
 
   // Dynamic capacity and format states
   const [selectedCapacity, setSelectedCapacity] = useState<number>(() => {
@@ -325,6 +341,33 @@ export default function SeatSelectionPage() {
     );
   }
 
+  // Auto-sync ticket price from live screenings or locationState
+  useEffect(() => {
+    if (screenings && screenings.length > 0) {
+      const match =
+        screenings.find((s) => {
+          if (timeLabel && s.time !== timeLabel) return false;
+          if (
+            cinemaLabel &&
+            !s.theaterName?.toLowerCase().includes(cinemaLabel.toLowerCase()) &&
+            !cinemaLabel.toLowerCase().includes(s.theaterName?.toLowerCase() || "")
+          )
+            return false;
+          return true;
+        }) ||
+        screenings.find((s) => timeLabel && s.time === timeLabel) ||
+        screenings[0];
+
+      if (match && typeof match.price === "number" && match.price > 0) {
+        setTicketPrice(match.price);
+        return;
+      }
+    }
+    if (passedPrice !== undefined && !isNaN(passedPrice) && passedPrice > 0) {
+      setTicketPrice(passedPrice);
+    }
+  }, [passedPrice, screenings, timeLabel, cinemaLabel]);
+
   function toggleSeat(seatId: string) {
     if (occupiedSeats.has(seatId.toUpperCase())) return;
     setSelectedSeats((prev) =>
@@ -335,7 +378,8 @@ export default function SeatSelectionPage() {
   }
 
   const ticketCount = selectedSeats.length;
-  const subtotal = ticketCount * SEAT_PRICE;
+  const unitPrice = ticketPrice > 0 ? ticketPrice : SEAT_PRICE;
+  const subtotal = ticketCount * unitPrice;
   const serviceFee = subtotal * SERVICE_FEE_RATE;
   const total = subtotal + serviceFee;
 
@@ -627,6 +671,7 @@ export default function SeatSelectionPage() {
                             time: timeLabel,
                             seats: selectedSeats,
                             ticketCount,
+                            ticketPrice: unitPrice,
                             subtotal,
                             serviceFee,
                             total,

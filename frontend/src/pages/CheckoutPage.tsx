@@ -41,6 +41,7 @@ interface CheckoutState {
   time?: string;
   seats?: string[];
   ticketCount?: number;
+  ticketPrice?: number;
   subtotal?: number;
   serviceFee?: number;
   total?: number;
@@ -175,7 +176,10 @@ export default function CheckoutPage() {
 
   const seats = locationState?.seats ?? [];
   const ticketCount = locationState?.ticketCount ?? seats.length;
-  const subtotal = locationState?.subtotal ?? ticketCount * SEAT_PRICE;
+  const unitPrice =
+    locationState?.ticketPrice ||
+    (locationState?.subtotal && ticketCount > 0 ? locationState.subtotal / ticketCount : SEAT_PRICE);
+  const subtotal = locationState?.subtotal ?? ticketCount * unitPrice;
   const serviceFee = locationState?.serviceFee ?? subtotal * SERVICE_FEE_RATE;
 
   // Auto-detect claimed activePromo in localStorage

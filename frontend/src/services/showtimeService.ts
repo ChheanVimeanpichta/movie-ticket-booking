@@ -248,7 +248,7 @@ export async function fetchAssignedMovieScreenings(
             date: s.date || "Today",
             time: s.time || "18:00",
             format: (s.format || "STANDARD").toUpperCase(),
-            price: typeof s.price === "number" ? s.price : 12.0,
+            price: typeof s.price === "number" ? s.price : (s.price ? Number(s.price) : 15.0),
             soldOut: Boolean(s.soldOut),
           });
         });
@@ -292,7 +292,7 @@ export async function fetchAssignedMovieScreenings(
                 date: s.date || "Today",
                 time: s.time || "18:00",
                 format: (s.format || "STANDARD").toUpperCase(),
-                price: typeof s.price === "number" ? s.price : 12.0,
+                price: typeof s.price === "number" ? s.price : (s.price ? Number(s.price) : 15.0),
                 soldOut: Boolean(s.soldOut),
               });
             }
@@ -323,15 +323,23 @@ export async function fetchAssignedMovieScreenings(
           if (matches) {
             const resolved = resolveVenue(r, venueMap, hallVenueMap, venues);
 
-            // Avoid duplicate
-            const isDup = screenings.some(
-              (existing) =>
-                existing.time === r.time &&
-                existing.format?.toUpperCase() === (r.format || "").toUpperCase() &&
-                existing.venueName === resolved.venueName
+            // Check if existing screening is already present
+            const existing = screenings.find(
+              (ex) =>
+                ex.id === r.id ||
+                (ex.time === r.time &&
+                  ex.format?.toUpperCase() === (r.format || "").toUpperCase() &&
+                  ex.venueName === resolved.venueName)
             );
 
-            if (!isDup) {
+            if (existing) {
+              if (r.price !== undefined && !isNaN(Number(r.price)) && Number(r.price) > 0) {
+                existing.price = Number(r.price);
+              }
+              if (resolved.hallName) {
+                existing.hall = resolved.hallName;
+              }
+            } else {
               screenings.push({
                 id: r.id || `local-sc-${Math.random()}`,
                 movieId: movieId,
@@ -343,7 +351,7 @@ export async function fetchAssignedMovieScreenings(
                 date: r.timeLabel || "Today",
                 time: r.time || "19:00",
                 format: (r.format || "STANDARD").toUpperCase(),
-                price: r.price ? Number(r.price) : 14.0,
+                price: r.price ? Number(r.price) : 15.0,
                 soldOut: r.status === "SOLD OUT",
               });
             }

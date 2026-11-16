@@ -158,7 +158,7 @@ export default function MovieCard({
               }}
               className="flex-1 inline-flex items-center justify-center rounded bg-cine-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-cine-red/80 shadow-md shadow-cine-red/20"
             >
-              {comingSoon ? "View Details" : "Book Ticket"}
+              {comingSoon ? "View Details" : "Booking Ticket"}
             </button>
             <button
               type="button"
@@ -168,7 +168,7 @@ export default function MovieCard({
                 navigate(targetUrl);
               }}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 text-white/80 transition-colors hover:border-white hover:text-white"
-              title={comingSoon ? "View Details" : "Select Showtime"}
+              title={comingSoon ? "View Details" : "Booking Ticket"}
             >
               <Info size={15} />
             </button>

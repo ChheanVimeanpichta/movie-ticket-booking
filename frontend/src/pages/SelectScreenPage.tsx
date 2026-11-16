@@ -154,7 +154,7 @@ const DEFAULT_SESSIONS: SessionCategory[] = [
   },
   {
     name: "STANDARD DIGITAL",
-    price: "$14.00 per ticket",
+    price: "$15.00 per ticket",
     times: ["11:00", "13:30", "16:00", "18:30", "21:00"],
     soldOut: [],
   },
@@ -207,6 +207,11 @@ export default function SelectScreenPage() {
 
   const availableCinemas = useMemo(() => {
     const list = new Set<string>();
+    // Prioritize CineStar Downtown if present
+    const downtown = assignedCinemas.find((c) => c.toLowerCase().includes("downtown"));
+    if (downtown) {
+      list.add(downtown);
+    }
     assignedCinemas.forEach((c) => {
       if (Boolean(c) && !isHallName(c)) list.add(c);
     });
@@ -280,6 +285,31 @@ export default function SelectScreenPage() {
     const timeDetail = category.timeDetails?.[selectedTime];
     const hallName = timeDetail?.hall || (category.halls && category.halls.length > 0 ? category.halls[0] : "Hall 1");
 
+    let seatPrice = 15.0;
+    if (timeDetail && typeof timeDetail.price === "number" && timeDetail.price > 0) {
+      seatPrice = timeDetail.price;
+    } else if (category.price) {
+      const match = category.price.match(/([0-9]+(?:\.[0-9]+)?)/);
+      if (match) {
+        seatPrice = parseFloat(match[1]);
+      }
+    }
+
+    // Direct screening lookup to guarantee matching live admin price
+    if (screenings && screenings.length > 0) {
+      const match = screenings.find(
+        (s) =>
+          s.time === selectedTime &&
+          (s.venueName?.toLowerCase() === selectedCinema.toLowerCase() ||
+            s.theaterName?.toLowerCase() === selectedCinema.toLowerCase() ||
+            selectedCinema.toLowerCase().includes((s.venueName || "").toLowerCase()) ||
+            (s.venueName || "").toLowerCase().includes(selectedCinema.toLowerCase()))
+      );
+      if (match && typeof match.price === "number" && match.price > 0) {
+        seatPrice = match.price;
+      }
+    }
+
     const bookingState = {
       date: DATES[selectedDate].full,
       cinema: selectedCinema,
@@ -287,6 +317,7 @@ export default function SelectScreenPage() {
       format: category.name,
       time: selectedTime,
       capacity: timeDetail?.capacity || (category as any)?.capacity,
+      price: seatPrice,
     };
 
     if (!isAuthenticated) {

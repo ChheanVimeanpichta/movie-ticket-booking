@@ -118,7 +118,7 @@ function MovieGridCard({ movie }: { movie: GridMovie }) {
               }}
               className="flex-1 inline-flex items-center justify-center rounded bg-cine-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-cine-red/80 shadow-md shadow-cine-red/20"
             >
-              {isComingSoon ? "Details" : "Book Ticket"}
+              {isComingSoon ? "Details" : "Booking Ticket"}
             </button>
             <button
               type="button"
