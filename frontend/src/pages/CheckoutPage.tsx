@@ -24,6 +24,7 @@ import { useNotifications } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { useMovies } from "@/context/MovieContext";
 import { validatePaymentReceipt } from "@/utils/paymentReceiptValidator";
+import QRCodeImage from "@/components/shared/QRCodeImage";
 
 type MovieData = (Movie | GridMovie) & {
   synopsis?: string;
@@ -806,9 +807,11 @@ export default function CheckoutPage() {
                 <p className="mt-1 text-center text-xs text-cine-text">
                   Scan the QR code below to pay
                 </p>
-                <div className="mx-auto mt-5 w-52 rounded-lg bg-white p-1.5">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=CineStar-${activeProvider.id}-${total.toFixed(2)}`}
+                <div className="mx-auto mt-5 w-52 rounded-lg bg-white p-2 shadow-inner">
+                  <QRCodeImage
+                    data={`CineStar-${activeProvider.id}-${total.toFixed(2)}`}
+                    size={280}
+                    centerLogo={activeProvider.logoUrl}
                     alt={`${activeProvider.name} payment QR code`}
                     className="w-full rounded"
                   />

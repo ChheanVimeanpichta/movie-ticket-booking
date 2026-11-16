@@ -46,7 +46,7 @@ function mapRawSlide(raw: any, index: number): SlideItem {
     id: String(raw.id || `slide-${index}`),
     image:
       raw.image ||
-      "https://picsum.photos/seed/hero-bg/1600/900",
+      "/slides/slide-1.jpg",
     title: raw.title || "CINEMA PREMIERE",
     subtitle: raw.subtitle || "",
     description:

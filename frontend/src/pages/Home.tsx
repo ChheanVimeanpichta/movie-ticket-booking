@@ -82,7 +82,7 @@ export default function Home() {
                 className="h-full w-full object-cover"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src =
-                    "https://picsum.photos/seed/hero-bg/1600/900";
+                    "/slides/slide-1.jpg";
                 }}
               />
             </div>
@@ -170,7 +170,7 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {currentNowShowing.slice(0, 4).map((movie) => (
-              <MovieCard key={movie.id} movie={movie} variant="poster" />
+              <MovieCard key={movie.id} movie={movie} variant="poster" isComingSoon={false} />
             ))}
           </div>
         </section>

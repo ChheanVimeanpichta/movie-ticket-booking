@@ -26,6 +26,11 @@ export default function Header() {
   const { isAuthenticated, user } = useAuth();
   const { movies } = useMovies();
   const avatarToDisplay = isAuthenticated && user?.avatar ? user.avatar : "";
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [avatarToDisplay]);
 
   const isElevatedUser = isAuthenticated && (user?.role === "Admin" || user?.role === "Staff" || user?.email?.toLowerCase() === "admin@gmail.com");
   const elevatedTitle = user?.role === "Staff" ? "Staff Portal" : "Admin Suite";
@@ -249,14 +254,20 @@ export default function Header() {
           <Link
             to="/profile"
             aria-label="Profile"
-            className="h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center"
+            className="h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center bg-[#8d6e63]"
           >
-            {isAuthenticated && avatarToDisplay ? (
+            {isAuthenticated && avatarToDisplay && !avatarError ? (
               <img
                 src={avatarToDisplay}
                 alt="User avatar"
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarError(true)}
                 className="h-full w-full object-cover"
               />
+            ) : isAuthenticated && user?.name ? (
+              <span className="text-xs font-bold text-white select-none">
+                {user.name.charAt(0).toUpperCase()}
+              </span>
             ) : (
               <User size={16} className="text-cine-text" />
             )}
@@ -333,14 +344,20 @@ export default function Header() {
             <Link
               to="/profile"
               onClick={() => setMenuOpen(false)}
-              className="ml-auto h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center"
+              className="ml-auto h-8 w-8 overflow-hidden rounded-full border-2 border-cine-border transition-colors hover:border-cine-red flex items-center justify-center bg-[#8d6e63]"
             >
-              {isAuthenticated && avatarToDisplay ? (
+              {isAuthenticated && avatarToDisplay && !avatarError ? (
                 <img
                   src={avatarToDisplay}
                   alt="User avatar"
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarError(true)}
                   className="h-full w-full object-cover"
                 />
+              ) : isAuthenticated && user?.name ? (
+                <span className="text-xs font-bold text-white select-none">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
               ) : (
                 <User size={16} className="text-cine-text" />
               )}

@@ -15,6 +15,7 @@ import Footer from "@/components/Footer";
 import { useNotifications } from "@/context/NotificationContext";
 import { useMovies } from "@/context/MovieContext";
 import { nowShowing, nowShowingGrid } from "@/data/movies";
+import QRCodeImage from "@/components/shared/QRCodeImage";
 
 const SAMPLE_BOOKINGS = [
   {
@@ -307,10 +308,11 @@ export default function TicketPage() {
 
               <div className="flex shrink-0 items-center gap-3">
                 <div className="rounded-xl border border-cine-border bg-white p-1.5 print:border-gray-300">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrData)}`}
+                  <QRCodeImage
+                    data={qrData}
+                    size={200}
                     alt="Ticket QR code"
-                    className="h-24 w-24"
+                    className="h-24 w-24 object-contain"
                   />
                 </div>
                 <div className="hidden sm:block">

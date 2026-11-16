@@ -124,6 +124,11 @@ export default function ProfilePage() {
 
   const displayName = isAuthenticated && user ? (user.name || profile.name) : "";
   const displayAvatar = isAuthenticated && user?.avatar ? user.avatar : "";
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [displayAvatar]);
 
   const userRole = user?.role || (user?.email?.toLowerCase() === "admin@gmail.com" ? "Admin" : "Customer");
   const isElevatedUser = isAuthenticated && (userRole === "Admin" || userRole === "Staff");
@@ -368,15 +373,17 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-6 md:flex-row md:items-center">
           <div className="flex items-center gap-5">
             <div className="relative shrink-0">
-              {displayAvatar ? (
+              {displayAvatar && !avatarError ? (
                 <img
                   src={displayAvatar}
                   alt={displayName}
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarError(true)}
                   className="h-24 w-24 rounded-xl border-2 border-cine-red object-cover"
                 />
               ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-cine-red bg-cine-card">
-                  <User size={40} className="text-cine-text" />
+                <div className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-cine-red bg-[#8d6e63] text-white font-display text-4xl font-bold select-none shadow-inner">
+                  {displayName ? displayName.charAt(0).toUpperCase() : <User size={40} className="text-cine-text" />}
                 </div>
               )}
               <span className={`absolute -bottom-2 left-2 rounded px-2 py-0.5 font-mono text-[10px] font-black tracking-widest ${roleBadgeStyle}`}>
@@ -555,11 +562,12 @@ export default function ProfilePage() {
                 <img
                   src={draft.avatar}
                   alt="Profile preview"
+                  referrerPolicy="no-referrer"
                   className="h-16 w-16 shrink-0 rounded-xl border-2 border-cine-red object-cover"
                 />
               ) : (
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-cine-red bg-cine-card">
-                  <User size={28} className="text-cine-text" />
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-cine-red bg-[#8d6e63] text-white text-2xl font-bold select-none">
+                  {draft.name ? draft.name.charAt(0).toUpperCase() : <User size={28} />}
                 </div>
               )}
               <label className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-cine-border bg-cine-bg px-4 py-4 text-center transition-colors hover:border-cine-red/60">

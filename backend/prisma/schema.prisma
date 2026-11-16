@@ -23,6 +23,7 @@ model Customer {
   phone        String?
   password     String?
   avatarUrl    String?  @db.LongText
+  googleId     String?  @unique
   role         String   @default("Customer")
   status       String   @default("Active")
   joinDate     String?
@@ -31,13 +32,16 @@ model Customer {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  name      String
-  phone     String?
-  createdAt DateTime  @default(now())
-  bookings  Booking[]
+  id           String    @id @default(uuid())
+  email        String    @unique
+  password     String?
+  name         String
+  phone        String?
+  googleId     String?   @unique
+  avatarUrl    String?   @db.Text
+  authProvider String    @default("local")
+  createdAt    DateTime  @default(now())
+  bookings     Booking[]
 }
 
 model Movie {
@@ -76,4 +80,35 @@ model Booking {
   seats      Seat[]
   total      Float
   createdAt  DateTime   @default(now())
+}
+
+model Offer {
+  id          String   @id @default(cuid())
+  title       String
+  caption     String?
+  badge       String?  @default("SPECIAL OFFER")
+  tag         String?  @default("EXCLUSIVE")
+  image       String   @db.LongText
+  icon        String?  @default("🍿")
+  validity    String?  @default("Limited Time")
+  description String   @db.Text
+  bullets     String?  @db.Text
+  publishDate String?
+  status      String   @default("Active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model Slide {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String?
+  description String   @db.Text
+  image       String   @db.LongText
+  badges      String?  @db.Text
+  linkUrl     String?  @default("/movies")
+  status      String   @default("Active")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 }

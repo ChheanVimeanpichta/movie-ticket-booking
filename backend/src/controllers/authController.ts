@@ -136,6 +136,11 @@ export const login = async (req: Request, res: Response) => {
     return;
   }
 
+  if (!user.password) {
+    res.status(401).json({ message: 'Invalid email/username or password. If you signed in with Google, please continue with Google.' });
+    return;
+  }
+
   const passwordMatches = await bcrypt.compare(password, user.password);
   if (!passwordMatches) {
     res.status(401).json({ message: 'Invalid email/username or password.' });

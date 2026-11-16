@@ -14,10 +14,13 @@ export default function MovieCard({
   const navigate = useNavigate();
 
   const comingSoon =
-    isComingSoon ??
-    Boolean(
-      movie.releaseDate && (!movie.showtimes || movie.showtimes.length === 0)
-    );
+    isComingSoon !== undefined
+      ? isComingSoon
+      : movie.hasShowtimeToday
+      ? false
+      : Boolean(
+          movie.releaseDate && (!movie.showtimes || movie.showtimes.length === 0)
+        );
   const targetUrl = comingSoon
     ? `/coming-soon/${movie.id}`
     : `/select-screen/${movie.id}`;

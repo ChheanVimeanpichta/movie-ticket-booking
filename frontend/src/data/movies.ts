@@ -279,7 +279,7 @@ export const nowShowingGrid: GridMovie[] = [
 
 export const heroSlides = [
   {
-    image: "https://picsum.photos/seed/hero-bg1/1600/900",
+    image: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1600&auto=format&fit=crop&q=80",
     title: "IRON",
     subtitle: "VERDICT",
     description:
@@ -287,7 +287,7 @@ export const heroSlides = [
     badges: ["NOW SHOWING", "IMAX 2D"],
   },
   {
-    image: "https://picsum.photos/seed/hero-bg2/1600/900",
+    image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&auto=format&fit=crop&q=80",
     title: "PIXEL",
     subtitle: "STATIC",
     description:
@@ -295,7 +295,7 @@ export const heroSlides = [
     badges: ["NOW SHOWING", "3D"],
   },
   {
-    image: "https://picsum.photos/seed/hero-bg3/1600/900",
+    image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1600&auto=format&fit=crop&q=80",
     title: "THE FROST",
     subtitle: "KING",
     description:
